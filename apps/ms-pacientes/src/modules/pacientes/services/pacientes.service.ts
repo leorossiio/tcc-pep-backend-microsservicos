@@ -4,7 +4,7 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { Request } from 'express';
-import { hashCpf, encryptNome, decryptNome } from '@pep/common';
+import { hashCpf, encryptNome, decryptNome } from '../../../../../../libs/common/src/utils/crypto.util';
 import { PacientesRepository } from '../repositories/pacientes.repository';
 import { CreatePacienteDto } from '../dto/create-paciente.dto';
 import { UpdatePacienteDto } from '../dto/update-paciente.dto';
