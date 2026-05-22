@@ -4,7 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { typeOrmConfig } from '../../config/database/typeorm.config';
-import { MedicosModule } from './modules/medicos/medicos.module';
+import { AtendimentosModule } from './modules/atendimentos/atendimentos.module';
 
 @Module({
   imports: [
@@ -13,7 +13,7 @@ import { MedicosModule } from './modules/medicos/medicos.module';
       envFilePath: '.env',
     }),
     TypeOrmModule.forRootAsync(typeOrmConfig),
-    MedicosModule, // Apenas o módulo estrangulado é importado
+    AtendimentosModule, // Apenas o módulo estrangulado é importado
   ],
   controllers: [AppController],
   providers: [AppService],
