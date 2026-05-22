@@ -1,12 +1,12 @@
 import { Controller, Get } from '@nestjs/common';
-import { MsAuditoriaService } from './app.service';
+import { AppService } from './app.service';
 
 @Controller()
-export class MsAuditoriaController {
-  constructor(private readonly msAuditoriaService: MsAuditoriaService) {}
+export class AppController {
+  constructor(private readonly appService: AppService) {}
 
   @Get()
-  getHello(): string {
-    return this.msAuditoriaService.getHello();
+  getHello(): Record<string, any> {
+    return this.appService.getHealthStatus();
   }
 }
