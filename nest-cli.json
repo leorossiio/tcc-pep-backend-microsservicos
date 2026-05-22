@@ -17,6 +17,15 @@
         "tsConfigPath": "apps/ms-atendimentos/tsconfig.app.json"
       }
     },
+    "ms-auditoria": {
+      "type": "application",
+      "root": "apps/ms-auditoria",
+      "entryFile": "main",
+      "sourceRoot": "apps/ms-auditoria/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/ms-auditoria/tsconfig.app.json"
+      }
+    },
     "ms-medicos": {
       "type": "application",
       "root": "apps/ms-medicos",
