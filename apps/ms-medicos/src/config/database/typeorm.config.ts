@@ -13,7 +13,7 @@ export const typeOrmConfig: TypeOrmModuleAsyncOptions = {
     password: configService.get<string>('POSTGRES_PASSWORD', 'rootpassword'),
     database: configService.get<string>('POSTGRES_DB', 'pep_relacional'),
     autoLoadEntities: true,
-    synchronize: true,
+    synchronize: false, // Tabela já gerenciada pelo monolito — nunca sincronizar automaticamente
     migrationsRun: false,
     migrations: [join(__dirname, '../../migrations/**/*{.ts,.js}')],
     logging: configService.get<string>('NODE_ENV') === 'development',

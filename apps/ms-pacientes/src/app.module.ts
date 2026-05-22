@@ -2,16 +2,18 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { PacientesModule } from './modules/pacientes/pacientes.module';
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
 import { Paciente } from './modules/pacientes/entities/paciente.entity';
 
 @Module({
   imports: [
-    // Carrega o arquivo .env global da raiz do projeto
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
     }),
-    // Configura a conexão com o PostgreSQL de forma assíncrona
+
+    // Conexão com o PostgreSQL (tabela pacientes_pg — compartilhada com o monolito)
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -23,11 +25,16 @@ import { Paciente } from './modules/pacientes/entities/paciente.entity';
         password: configService.get<string>('POSTGRES_PASSWORD', 'rootpassword'),
         database: configService.get<string>('POSTGRES_DB', 'pep_relacional'),
         entities: [Paciente],
-        synchronize: false,
+        synchronize: false, // Tabela já gerenciada pelo monolito — nunca sincronizar automaticamente
       }),
     }),
-    // Importa o módulo isolado de pacientes que estruturamos
+
+    // TODO: MongooseModule será adicionado aqui quando o ms-pacientes
+    // assumir o domínio de histórico clínico (próxima fase do estrangulamento).
+
     PacientesModule,
   ],
+  controllers: [AppController],
+  providers: [AppService],
 })
 export class AppModule {}
