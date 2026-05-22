@@ -19,6 +19,12 @@
     "forceConsistentCasingInFileNames": true,
     "noImplicitAny": false,
     "strictBindCallApply": false,
-    "noFallthroughCasesInSwitch": false
-  }
+    "noFallthroughCasesInSwitch": false,
+    "baseUrl": "./",
+    "paths": {
+      "@ms-medicos/*": ["apps/ms-medicos/src/*"],
+      "@ms-pacientes/*": ["apps/ms-pacientes/src/*"]
+    }
+  },
+  "exclude": ["node_modules", "dist"]
 }
