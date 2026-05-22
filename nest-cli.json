@@ -10,13 +10,13 @@
   "monorepo": true,
   "root": "apps/ms-medicos",
   "projects": {
-    "ms-pacientes": {
-      "type": "application",
-      "root": "apps/ms-pacientes",
-      "entryFile": "main",
-      "sourceRoot": "apps/ms-pacientes/src",
+    "common": {
+      "type": "library",
+      "root": "libs/common",
+      "entryFile": "index",
+      "sourceRoot": "libs/common/src",
       "compilerOptions": {
-        "tsConfigPath": "apps/ms-pacientes/tsconfig.app.json"
+        "tsConfigPath": "libs/common/tsconfig.lib.json"
       }
     },
     "ms-medicos": {
@@ -26,6 +26,15 @@
       "sourceRoot": "apps/ms-medicos/src",
       "compilerOptions": {
         "tsConfigPath": "apps/ms-medicos/tsconfig.app.json"
+      }
+    },
+    "ms-pacientes": {
+      "type": "application",
+      "root": "apps/ms-pacientes",
+      "entryFile": "main",
+      "sourceRoot": "apps/ms-pacientes/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/ms-pacientes/tsconfig.app.json"
       }
     }
   }
