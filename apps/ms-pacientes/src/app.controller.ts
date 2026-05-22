@@ -1,12 +1,12 @@
 import { Controller, Get } from '@nestjs/common';
-import { MsPacientesService } from './app.service';
+import { AppService } from './app.service';
 
 @Controller()
-export class MsPacientesController {
-  constructor(private readonly msPacientesService: MsPacientesService) {}
+export class AppController {
+  constructor(private readonly appService: AppService) {}
 
   @Get()
-  getHello(): string {
-    return this.msPacientesService.getHello();
+  getHello(): Record<string, any> {
+    return this.appService.getHealthStatus();
   }
 }

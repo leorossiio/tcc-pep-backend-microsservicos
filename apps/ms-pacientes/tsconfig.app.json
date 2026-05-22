@@ -2,7 +2,11 @@
   "extends": "../../tsconfig.json",
   "compilerOptions": {
     "declaration": false,
-    "outDir": "../../dist/apps/ms-pacientes"
+    "outDir": "../../dist/apps/ms-pacientes",
+    "paths": {
+      "@pep/common": ["../../libs/common/src/index.ts"],
+      "@pep/common/*": ["../../libs/common/src/*"]
+    }
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "test", "**/*spec.ts"]

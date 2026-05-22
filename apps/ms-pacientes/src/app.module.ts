@@ -23,7 +23,7 @@ import { Paciente } from './modules/pacientes/entities/paciente.entity';
         password: configService.get<string>('POSTGRES_PASSWORD', 'rootpassword'),
         database: configService.get<string>('POSTGRES_DB', 'pep_relacional'),
         entities: [Paciente],
-        synchronize: false, // Deixe false pois a estrutura já foi criada pelas migrations do monólito
+        synchronize: false,
       }),
     }),
     // Importa o módulo isolado de pacientes que estruturamos

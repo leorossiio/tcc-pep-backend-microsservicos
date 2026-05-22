@@ -8,7 +8,7 @@ export class AppService {
       status: 'online',
       uptime: process.uptime(),
       timestamp: new Date().toISOString(),
-      porta: process.env.PORT || 3001
+      porta: process.env.PORT_MEDICOS || 3001
     };
   }
 }
