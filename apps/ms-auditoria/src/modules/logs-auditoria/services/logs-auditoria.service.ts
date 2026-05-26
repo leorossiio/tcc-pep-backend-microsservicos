@@ -1,3 +1,4 @@
+// apps/ms-auditoria/src/modules/logs-auditoria/services/logs-auditoria.service.ts
 import { Injectable } from '@nestjs/common';
 import { LogsAuditoriaRepository } from '../repositories/logs-auditoria.repository';
 import { CreateLogAuditoriaDto } from '../dto/create-log-auditoria.dto';

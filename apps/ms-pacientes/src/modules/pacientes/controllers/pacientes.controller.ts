@@ -1,17 +1,7 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Patch,
-  Param,
-  Delete,
-  HttpCode,
-  HttpStatus,
-  ParseUUIDPipe,
-  Req,
-} from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
+// apps/ms-pacientes/src/modules/pacientes/controllers/pacientes.controller.ts
+import { Controller, Get, Post, Body, Patch, Param, Delete, HttpCode, HttpStatus, Req } from '@nestjs/common';
+import { Request } from 'express';
+import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { PacientesService } from '../services/pacientes.service';
 import { CreatePacienteDto } from '../dto/create-paciente.dto';
 import { UpdatePacienteDto } from '../dto/update-paciente.dto';
@@ -22,49 +12,35 @@ export class PacientesController {
   constructor(private readonly pacientesService: PacientesService) {}
 
   @Post()
-  @ApiOperation({ summary: 'Cadastrar novo paciente' })
-  @ApiResponse({ status: 201, description: 'Paciente criado com sucesso' })
-  @ApiResponse({ status: 409, description: 'CPF já cadastrado' })
-  create(@Body() dto: CreatePacienteDto, @Req() req: any) {
-    return this.pacientesService.create(dto, req);
+  @ApiOperation({ summary: 'Cadastrar um novo paciente' })
+  @ApiResponse({ status: 201, description: 'Paciente cadastrado com sucesso.' })
+  @ApiResponse({ status: 409, description: 'Conflito (CPF já existente).' })
+  create(@Body() createPacienteDto: CreatePacienteDto, @Req() req: Request) {
+    return this.pacientesService.create(createPacienteDto, req);
   }
 
   @Get()
   @ApiOperation({ summary: 'Listar todos os pacientes' })
-  @ApiResponse({ status: 200, description: 'Lista de pacientes' })
   findAll() {
     return this.pacientesService.findAll();
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Buscar paciente por ID' })
-  @ApiParam({ name: 'id', type: 'string', format: 'uuid' })
-  @ApiResponse({ status: 200, description: 'Paciente encontrado' })
-  @ApiResponse({ status: 404, description: 'Paciente não encontrado' })
-  findOne(@Param('id', ParseUUIDPipe) id: string) {
+  @ApiOperation({ summary: 'Buscar paciente específico' })
+  findOne(@Param('id') id: string) {
     return this.pacientesService.findOne(id);
   }
 
   @Patch(':id')
-  @ApiOperation({ summary: 'Atualizar paciente' })
-  @ApiParam({ name: 'id', type: 'string', format: 'uuid' })
-  @ApiResponse({ status: 200, description: 'Paciente atualizado' })
-  @ApiResponse({ status: 404, description: 'Paciente não encontrado' })
-  update(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body() dto: UpdatePacienteDto,
-    @Req() req: any,
-  ) {
-    return this.pacientesService.update(id, dto, req);
+  @ApiOperation({ summary: 'Atualizar dados cadastrais' })
+  update(@Param('id') id: string, @Body() updatePacienteDto: UpdatePacienteDto, @Req() req: Request) {
+    return this.pacientesService.update(id, updatePacienteDto, req);
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Remover paciente' })
-  @ApiParam({ name: 'id', type: 'string', format: 'uuid' })
-  @ApiResponse({ status: 204, description: 'Paciente removido' })
-  @ApiResponse({ status: 404, description: 'Paciente não encontrado' })
-  remove(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
+  remove(@Param('id') id: string, @Req() req: Request) {
     return this.pacientesService.remove(id, req);
   }
 }

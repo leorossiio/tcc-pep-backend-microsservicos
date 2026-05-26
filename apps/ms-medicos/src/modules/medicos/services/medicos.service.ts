@@ -1,8 +1,6 @@
-import {
-  Injectable,
-  NotFoundException,
-  ConflictException,
-} from '@nestjs/common';
+// apps/ms-medicos/src/modules/medicos/services/medicos.service.ts
+import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { HttpService } from '@nestjs/axios';
 import { MedicosRepository } from '../repositories/medicos.repository';
 import { CreateMedicoDto } from '../dto/create-medico.dto';
 import { UpdateMedicoDto } from '../dto/update-medico.dto';
@@ -10,9 +8,28 @@ import { Medico } from '../entities/medico.entity';
 
 @Injectable()
 export class MedicosService {
+  private readonly urlAuditoria = process.env.URL_AUDITORIA || 'http://localhost:3004/auditoria';
+
   constructor(
     private readonly medicosRepository: MedicosRepository,
+    private readonly httpService: HttpService, // Substitui os antigos acoplamentos
   ) {}
+
+  // Centraliza o disparo do Log via Rede
+  private dispararAuditoria(acao: string, entidadeId: string) {
+    const payload = {
+      atendimentoId: null,
+      acaoRealizada: acao,
+      ipOrigem: null, // Monolito não rastreava IP em médicos, manteremos o contrato
+      entidadeAfetada: 'Medico',
+      entidadeId: entidadeId,
+      usuarioResponsavel: 'sistema',
+    };
+
+    this.httpService.post(this.urlAuditoria, payload).subscribe({
+      error: (err) => console.warn('[ms-medicos] Falha ao comunicar com Auditoria:', err.message),
+    });
+  }
 
   async create(dto: CreateMedicoDto): Promise<Medico> {
     const existing = await this.medicosRepository.findByCrm(dto.crm);
@@ -26,7 +43,12 @@ export class MedicosService {
     medico.especialidade = dto.especialidade;
     medico.ativo = dto.ativo ?? true;
 
-    return this.medicosRepository.save(medico);
+    const saved = await this.medicosRepository.save(medico);
+
+    // Agora o cadastro do médico também é auditado!
+    this.dispararAuditoria('Médico cadastrado no sistema', saved.id);
+
+    return saved;
   }
 
   findAll(): Promise<Medico[]> {
@@ -60,17 +82,18 @@ export class MedicosService {
     if (dto.especialidade) medico.especialidade = dto.especialidade;
     if (dto.ativo !== undefined) medico.ativo = dto.ativo;
 
-    return this.medicosRepository.save(medico);
+    const saved = await this.medicosRepository.save(medico);
+
+    const campos = Object.keys(dto).join(', ');
+    this.dispararAuditoria(`Dados do médico atualizados — campos: ${campos}`, saved.id);
+
+    return saved;
   }
 
   async remove(id: string): Promise<void> {
     await this.findOne(id);
     await this.medicosRepository.remove(id);
-  }
 
-  /*
-   * MÉTODOS ESTRANGULADOS:
-   * As chamadas getAtendimentos() e getLaudos() foram isoladas.
-   * A composição de dados ocorrerá via API Gateway ou comunicação entre MS.
-   */
+    this.dispararAuditoria('Médico removido do sistema', id);
+  }
 }

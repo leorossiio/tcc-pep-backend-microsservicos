@@ -1,14 +1,16 @@
+// apps/ms-atendimentos/src/modules/atendimentos/atendimentos.module.ts
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { Atendimento } from './entities/atendimento.entity';
+import { HttpModule } from '@nestjs/axios';
 import { AtendimentosController } from './controllers/atendimentos.controller';
 import { AtendimentosService } from './services/atendimentos.service';
 import { AtendimentosRepository } from './repositories/atendimentos.repository';
+import { Atendimento } from './entities/atendimento.entity';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Atendimento]),
-    // O LogsAuditoriaModule entrará aqui no próximo passo, quando o criarmos neste MS.
+    HttpModule, // Habilita chamadas assíncronas para a Auditoria
   ],
   controllers: [AtendimentosController],
   providers: [AtendimentosService, AtendimentosRepository],
