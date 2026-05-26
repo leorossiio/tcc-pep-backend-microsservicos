@@ -1,0 +1,185 @@
+services:
+  ms-medicos:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - APP_NAME=ms-medicos
+    container_name: ms_medicos
+    restart: always
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - POSTGRES_HOST=postgres-pep
+      - POSTGRES_PORT=5432
+      - PORT_MEDICOS=3001
+      - URL_AUDITORIA=http://ms_auditoria:3004/auditoria
+    ports:
+      - "3001:3001"
+    depends_on:
+      - postgres-pep
+    networks:
+      - pep_network
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+
+  ms-pacientes:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - APP_NAME=ms-pacientes
+    container_name: ms_pacientes
+    restart: always
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - POSTGRES_HOST=postgres-pep
+      - POSTGRES_PORT=5432
+      - PORT_PACIENTES=3002
+      - URL_AUDITORIA=http://ms_auditoria:3004/auditoria
+    ports:
+      - "3002:3002"
+    depends_on:
+      - postgres-pep
+    networks:
+      - pep_network
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+
+  ms-atendimentos:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - APP_NAME=ms-atendimentos
+    container_name: ms_atendimentos
+    restart: always
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - POSTGRES_HOST=postgres-pep
+      - POSTGRES_PORT=5432
+      - PORT_ATENDIMENTOS=3003
+      - URL_AUDITORIA=http://ms_auditoria:3004/auditoria
+    ports:
+      - "3003:3003"
+    depends_on:
+      - postgres-pep
+    networks:
+      - pep_network
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+
+  ms-auditoria:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - APP_NAME=ms-auditoria
+    container_name: ms_auditoria
+    restart: always
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - POSTGRES_HOST=postgres-pep
+      - POSTGRES_PORT=5432
+      - PORT_AUDITORIA=3004
+    ports:
+      - "3004:3004"
+    depends_on:
+      - postgres-pep
+    networks:
+      - pep_network
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+
+  postgres-pep:
+    image: postgres:15-alpine
+    container_name: db_postgres_pep
+    restart: always
+    env_file:
+      - .env
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./migrations/postgres:/docker-entrypoint-initdb.d
+    networks:
+      - pep_network
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus_pep_ms
+    restart: always
+    ports:
+      - "9090:9090"
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--web.enable-remote-write-receiver'
+      - '--storage.tsdb.retention.time=7d'
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    networks:
+      - pep_network
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana_pep_ms
+    restart: always
+    ports:
+      - "3005:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_PATHS_PROVISIONING=/etc/grafana/provisioning
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+    depends_on:
+      - prometheus
+    networks:
+      - pep_network
+
+  k6:
+    image: grafana/k6:latest
+    container_name: k6_pep_ms
+    volumes:
+      - ./k6-scripts:/scripts
+    networks:
+      - pep_network
+
+volumes:
+  postgres_data:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  pep_network:
+    driver: bridge

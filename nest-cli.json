@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json.schemastore.org/nest-cli",
+  "collection": "@nestjs/schematics",
+  "monorepo": true,
+  "root": "apps",
+  "compilerOptions": {
+    "deleteOutDir": true,
+    "webpack": true
+  },
+  "projects": {
+    "ms-atendimentos": {
+      "type": "application",
+      "root": "apps/ms-atendimentos",
+      "entryFile": "main",
+      "sourceRoot": "apps/ms-atendimentos/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/ms-atendimentos/tsconfig.app.json"
+      }
+    },
+    "ms-auditoria": {
+      "type": "application",
+      "root": "apps/ms-auditoria",
+      "entryFile": "main",
+      "sourceRoot": "apps/ms-auditoria/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/ms-auditoria/tsconfig.app.json"
+      }
+    },
+    "ms-medicos": {
+      "type": "application",
+      "root": "apps/ms-medicos",
+      "entryFile": "main",
+      "sourceRoot": "apps/ms-medicos/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/ms-medicos/tsconfig.app.json"
+      }
+    },
+    "ms-pacientes": {
+      "type": "application",
+      "root": "apps/ms-pacientes",
+      "entryFile": "main",
+      "sourceRoot": "apps/ms-pacientes/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/ms-pacientes/tsconfig.app.json"
+      }
+    }
+  }
+}
