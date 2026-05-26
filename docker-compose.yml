@@ -14,6 +14,7 @@ services:
       - POSTGRES_HOST=postgres-pep
       - POSTGRES_PORT=5432
       - PORT_MEDICOS=3001
+      - URL_AUDITORIA=http://ms_auditoria:3004/auditoria
     ports:
       - "3001:3001"
     depends_on:
@@ -41,6 +42,7 @@ services:
       - POSTGRES_HOST=postgres-pep
       - POSTGRES_PORT=5432
       - PORT_PACIENTES=3002
+      - URL_AUDITORIA=http://ms_auditoria:3004/auditoria
     ports:
       - "3002:3002"
     depends_on:
@@ -68,6 +70,7 @@ services:
       - POSTGRES_HOST=postgres-pep
       - POSTGRES_PORT=5432
       - PORT_ATENDIMENTOS=3003
+      - URL_AUDITORIA=http://ms_auditoria:3004/auditoria
     ports:
       - "3003:3003"
     depends_on:
