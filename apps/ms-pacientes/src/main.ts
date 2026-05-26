@@ -1,17 +1,26 @@
+// apps/ms-pacientes/src/main.ts
 import { NestFactory } from '@nestjs/core';
-import { AppModule } from './../src/app.module';
+import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-
-  // Ativa a validação global automática para os DTOs (usando class-validator)
-  app.useGlobalPipes(new ValidationPipe({ transform: true }));
-
-  // Define a porta 3002 como padrão para o domínio de pacientes
-  const port = process.env.PORT_PACIENTES || 3002;
   
+  // Mantém o mesmo contrato de validação do monólito
+  app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+
+  // Configuração do Swagger
+  const config = new DocumentBuilder()
+    .setTitle('API Pacientes - Microsserviços')
+    .setDescription('Gestão isolada de pacientes. Os logs são enviados de forma assíncrona para o ms-auditoria.')
+    .setVersion('1.0')
+    .build();
+  const document = SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup('api/docs', app, document);
+
+  const port = process.env.PORT_PACIENTES || 3002;
   await app.listen(port);
-  console.log(`\x1b[32m[NestFactory] Microsserviço de Pacientes iniciado com sucesso na porta ${port}\x1b[0m`);
+  console.log(`[ms-pacientes] a rodar na porta ${port} | Swagger: http://localhost:${port}/api/docs`);
 }
 bootstrap();
