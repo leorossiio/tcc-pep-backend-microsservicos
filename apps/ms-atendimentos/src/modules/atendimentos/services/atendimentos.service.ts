@@ -25,12 +25,16 @@ export class AtendimentosService {
 
   // Disparo assíncrono para ms-auditoria
   private dispararAuditoria(atendimentoId: string, acao: string, usuarioId: string | null, req?: Request) {
+    // Se a ação for de remoção, enviamos null para a coluna de Foreign Key (atendimentoId),
+    // pois o registro já foi deletado do banco e o PostgreSQL bloquearia a inserção.
+    const isRemocao = acao.includes('removido');
+
     const payload = {
-      atendimentoId: atendimentoId,
+      atendimentoId: isRemocao ? null : atendimentoId, // O "Hack" elegante para evitar o erro de FK
       acaoRealizada: acao,
       ipOrigem: this.extractIp(req),
       entidadeAfetada: 'Atendimento',
-      entidadeId: atendimentoId,
+      entidadeId: atendimentoId, // O ID continua salvo aqui para o histórico (em formato de texto livre)
       usuarioResponsavel: usuarioId,
     };
 
