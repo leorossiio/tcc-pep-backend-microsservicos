@@ -11,16 +11,16 @@ services:
       - .env
     environment:
       - NODE_ENV=production
-      - POSTGRES_HOST=postgres-pep
+      - POSTGRES_HOST=postgres-pep-ms
       - POSTGRES_PORT=5432
       - PORT_MEDICOS=3001
       - URL_AUDITORIA=http://ms_auditoria:3004/auditoria
     ports:
       - "3001:3001"
     depends_on:
-      - postgres-pep
+      - postgres-pep-ms
     networks:
-      - pep_network
+      - pep_network_ms
     deploy:
       resources:
         limits:
@@ -39,16 +39,16 @@ services:
       - .env
     environment:
       - NODE_ENV=production
-      - POSTGRES_HOST=postgres-pep
+      - POSTGRES_HOST=postgres-pep-ms
       - POSTGRES_PORT=5432
       - PORT_PACIENTES=3002
       - URL_AUDITORIA=http://ms_auditoria:3004/auditoria
     ports:
       - "3002:3002"
     depends_on:
-      - postgres-pep
+      - postgres-pep-ms
     networks:
-      - pep_network
+      - pep_network_ms
     deploy:
       resources:
         limits:
@@ -67,16 +67,16 @@ services:
       - .env
     environment:
       - NODE_ENV=production
-      - POSTGRES_HOST=postgres-pep
+      - POSTGRES_HOST=postgres-pep-ms
       - POSTGRES_PORT=5432
       - PORT_ATENDIMENTOS=3003
       - URL_AUDITORIA=http://ms_auditoria:3004/auditoria
     ports:
       - "3003:3003"
     depends_on:
-      - postgres-pep
+      - postgres-pep-ms
     networks:
-      - pep_network
+      - pep_network_ms
     deploy:
       resources:
         limits:
@@ -95,24 +95,24 @@ services:
       - .env
     environment:
       - NODE_ENV=production
-      - POSTGRES_HOST=postgres-pep
+      - POSTGRES_HOST=postgres-pep-ms
       - POSTGRES_PORT=5432
       - PORT_AUDITORIA=3004
     ports:
       - "3004:3004"
     depends_on:
-      - postgres-pep
+      - postgres-pep-ms
     networks:
-      - pep_network
+      - pep_network_ms
     deploy:
       resources:
         limits:
           cpus: '1.0'
           memory: 512M
 
-  postgres-pep:
+  postgres-pep-ms:
     image: postgres:15-alpine
-    container_name: db_postgres_pep
+    container_name: db_postgres_pep_ms
     restart: always
     env_file:
       - .env
@@ -121,12 +121,12 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DB=${POSTGRES_DB}
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "5433:5432" # Ajustado para não colidir com a porta 5432 do monolito
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./migrations/postgres:/docker-entrypoint-initdb.d
+      - postgres_ms_data:/var/lib/postgresql/data
+      - ./migration/postgres:/docker-entrypoint-initdb.d
     networks:
-      - pep_network
+      - pep_network_ms
     deploy:
       resources:
         limits:
@@ -138,34 +138,34 @@ services:
     container_name: prometheus_pep_ms
     restart: always
     ports:
-      - "9090:9090"
+      - "9091:9090" # Ajustado para não colidir com o 9090 do monolito
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--web.enable-remote-write-receiver'
       - '--storage.tsdb.retention.time=7d'
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
-      - prometheus_data:/prometheus
+      - prometheus_ms_data:/prometheus
     networks:
-      - pep_network
+      - pep_network_ms
 
   grafana:
     image: grafana/grafana:latest
     container_name: grafana_pep_ms
     restart: always
     ports:
-      - "3005:3000"
+      - "3006:3000" # Ajustado para não colidir com o 3005 do monolito
     environment:
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=admin
       - GF_PATHS_PROVISIONING=/etc/grafana/provisioning
     volumes:
-      - grafana_data:/var/lib/grafana
+      - grafana_ms_data:/var/lib/grafana
       - ./grafana/provisioning:/etc/grafana/provisioning
     depends_on:
       - prometheus
     networks:
-      - pep_network
+      - pep_network_ms
 
   k6:
     image: grafana/k6:latest
@@ -173,13 +173,13 @@ services:
     volumes:
       - ./k6-scripts:/scripts
     networks:
-      - pep_network
+      - pep_network_ms
 
 volumes:
-  postgres_data:
-  prometheus_data:
-  grafana_data:
+  postgres_ms_data:
+  prometheus_ms_data:
+  grafana_ms_data:
 
 networks:
-  pep_network:
+  pep_network_ms:
     driver: bridge
