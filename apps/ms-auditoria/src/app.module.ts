@@ -4,7 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { typeOrmConfig } from '../../config/database/typeorm.config';
-import { AuditoriaModule } from './modules/auditoria/auditoria.module';
+import { LogsAuditoriaModule } from './modules/logs-auditoria/logs-auditoria.module';
 
 @Module({
   imports: [
@@ -13,7 +13,7 @@ import { AuditoriaModule } from './modules/auditoria/auditoria.module';
       envFilePath: '.env',
     }),
     TypeOrmModule.forRootAsync(typeOrmConfig),
-    AuditoriaModule, // Apenas o módulo estrangulado é importado
+    LogsAuditoriaModule, // Apenas o módulo estrangulado é importado
   ],
   controllers: [AppController],
   providers: [AppService],
