@@ -10,7 +10,7 @@ import { Atendimento } from './entities/atendimento.entity';
 @Module({
   imports: [
     TypeOrmModule.forFeature([Atendimento]),
-    HttpModule, // Habilita chamadas assíncronas para a Auditoria
+    HttpModule,
   ],
   controllers: [AtendimentosController],
   providers: [AtendimentosService, AtendimentosRepository],

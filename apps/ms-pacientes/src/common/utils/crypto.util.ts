@@ -8,23 +8,14 @@ function getEncryptionKey(): Buffer {
   if (!secret) {
     throw new Error('ENCRYPTION_KEY não definida nas variáveis de ambiente');
   }
-  // Deriva uma chave de 32 bytes a partir do segredo
   return crypto.createHash('sha256').update(secret).digest();
 }
 
-/**
- * Gera um hash SHA-256 do CPF para armazenamento seguro.
- * O hash é determinístico: mesmo CPF sempre gera mesmo hash.
- */
 export function hashCpf(cpf: string): string {
   const normalized = cpf.replace(/\D/g, '');
   return crypto.createHash('sha256').update(normalized).digest('hex');
 }
 
-/**
- * Criptografa o nome do paciente com AES-256-CBC.
- * O IV é gerado aleatoriamente e prefixado ao resultado (hex:hex).
- */
 export function encryptNome(nome: string): string {
   const key = getEncryptionKey();
   const iv = crypto.randomBytes(IV_LENGTH);
@@ -33,10 +24,6 @@ export function encryptNome(nome: string): string {
   return `${iv.toString('hex')}:${encrypted.toString('hex')}`;
 }
 
-/**
- * Descriptografa o nome do paciente.
- * Espera o formato "ivHex:encryptedHex" gerado por encryptNome.
- */
 export function decryptNome(encrypted: string): string {
   const [ivHex, encryptedHex] = encrypted.split(':');
   if (!ivHex || !encryptedHex) {

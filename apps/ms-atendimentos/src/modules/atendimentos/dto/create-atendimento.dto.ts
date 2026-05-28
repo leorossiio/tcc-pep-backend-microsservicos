@@ -25,11 +25,12 @@ export class CreateAtendimentoDto {
   medicoTriagemId!: string;
 
   @ApiProperty({ description: 'Data e hora da entrada no formato ISO 8601 (ex: 2026-05-11T14:30:00Z)' })
+  @IsOptional() // <-- ADICIONAR ISTO
   @IsDateString()
   @IsNotEmpty()
-  dataHoraEntrada!: string;
+  dataHoraEntrada?: string | Date; // <-- Colocar o ponto de interrogação (?)
 
-  @ApiProperty({ description: 'Queixa principal relatada' })
+@ApiProperty({ description: 'Queixa principal relatada' })
   @IsString()
   @IsNotEmpty()
   queixaPrincipal!: string;

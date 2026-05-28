@@ -1,4 +1,3 @@
-// apps/ms-atendimentos/src/modules/atendimentos/services/atendimentos.service.ts
 import { Injectable, NotFoundException, InternalServerErrorException } from '@nestjs/common';
 import { Request } from 'express';
 import { HttpService } from '@nestjs/axios';
@@ -25,16 +24,15 @@ export class AtendimentosService {
 
   // Disparo assíncrono para ms-auditoria
   private dispararAuditoria(atendimentoId: string, acao: string, usuarioId: string | null, req?: Request) {
-    // Se a ação for de remoção, enviamos null para a coluna de Foreign Key (atendimentoId),
-    // pois o registro já foi deletado do banco e o PostgreSQL bloquearia a inserção.
+   
     const isRemocao = acao.includes('removido');
 
     const payload = {
-      atendimentoId: isRemocao ? null : atendimentoId, // O "Hack" elegante para evitar o erro de FK
+      atendimentoId: isRemocao ? null : atendimentoId,
       acaoRealizada: acao,
       ipOrigem: this.extractIp(req),
       entidadeAfetada: 'Atendimento',
-      entidadeId: atendimentoId, // O ID continua salvo aqui para o histórico (em formato de texto livre)
+      entidadeId: atendimentoId,
       usuarioResponsavel: usuarioId,
     };
 
@@ -44,15 +42,16 @@ export class AtendimentosService {
   }
 
   async create(dto: CreateAtendimentoDto, req?: Request) {
+    if (!dto.dataHoraEntrada) {
+      dto.dataHoraEntrada = new Date().toISOString();
+    }
+
     let atendimentoSalvo: Atendimento;
     try {
       atendimentoSalvo = await this.atendimentosRepository.create(dto);
     } catch (error) {
       throw new InternalServerErrorException('Falha ao persistir atendimento no PostgreSQL');
     }
-
-    // Na POC 1 (TCC 1), removemos a criação sincrona do Histórico e Triagem no MongoDB.
-    // O foco agora é validar a arquitetura distribuída.
 
     this.dispararAuditoria(
       atendimentoSalvo.id,
@@ -61,8 +60,7 @@ export class AtendimentosService {
       req,
     );
 
-    // O JSON de retorno mantém exatamente o mesmo formato!
-    return { success: true, atendimentoId: atendimentoSalvo.id };
+    return { success: true, atendimentoId: atendimentoSalvo.id, dados: atendimentoSalvo };
   }
 
   async findAll() {
@@ -75,7 +73,7 @@ export class AtendimentosService {
 
   async findComLaudosByMedicoId(medicoId: string) {
     const atendimentos = await this.atendimentosRepository.findByMedicoTriagemId(medicoId);
-    // Retorna array vazio em consultasLaudos para não quebrar o front-end
+    
     return atendimentos.map((a) => ({
       ...a,
       consultasLaudos: [], 
