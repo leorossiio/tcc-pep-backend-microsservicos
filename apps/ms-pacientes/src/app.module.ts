@@ -1,11 +1,13 @@
 import { Module } from '@nestjs/common';
+import { APP_INTERCEPTOR } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { PacientesModule } from './modules/pacientes/pacientes.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { Paciente } from './modules/pacientes/entities/paciente.entity';
-import { PrometheusModule } from '@willsoto/nestjs-prometheus';
+import { PrometheusModule, makeHistogramProvider } from '@willsoto/nestjs-prometheus';
+import { HttpMetricsInterceptor } from '@pep/common';
 
 @Module({
   imports: [
@@ -14,9 +16,9 @@ import { PrometheusModule } from '@willsoto/nestjs-prometheus';
       envFilePath: '.env',
     }),
     PrometheusModule.register({
-              path: '/metrics',
-              defaultMetrics: { enabled: true },
-            }),
+      path: '/metrics',
+      defaultMetrics: { enabled: true },
+    }),
     // Conexão com o PostgreSQL (tabela pacientes_pg — compartilhada com o monolito)
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
@@ -29,16 +31,21 @@ import { PrometheusModule } from '@willsoto/nestjs-prometheus';
         password: configService.get<string>('POSTGRES_PASSWORD', 'rootpassword'),
         database: configService.get<string>('POSTGRES_DB', 'pep_relacional'),
         entities: [Paciente],
-        synchronize: false, // Tabela já gerenciada pelo monolito — nunca sincronizar automaticamente
+        synchronize: false,
       }),
     }),
-
-    // TODO: MongooseModule será adicionado aqui quando o ms-pacientes
-    // assumir o domínio de histórico clínico (próxima fase do estrangulamento).
-
     PacientesModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    makeHistogramProvider({
+      name: 'http_request_duration_seconds',
+      help: 'Duração das requisições HTTP em segundos',
+      labelNames: ['method', 'path', 'status_code'],
+      buckets: [0.01, 0.05, 0.1, 0.25, 0.5, 0.75, 1, 2, 5],
+    }),
+    { provide: APP_INTERCEPTOR, useClass: HttpMetricsInterceptor },
+  ],
 })
 export class AppModule {}
