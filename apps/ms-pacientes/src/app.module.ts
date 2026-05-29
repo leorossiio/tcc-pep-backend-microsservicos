@@ -5,6 +5,7 @@ import { PacientesModule } from './modules/pacientes/pacientes.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { Paciente } from './modules/pacientes/entities/paciente.entity';
+import { PrometheusModule } from '@willsoto/nestjs-prometheus';
 
 @Module({
   imports: [
@@ -12,7 +13,10 @@ import { Paciente } from './modules/pacientes/entities/paciente.entity';
       isGlobal: true,
       envFilePath: '.env',
     }),
-
+    PrometheusModule.register({
+              path: '/metrics',
+              defaultMetrics: { enabled: true },
+            }),
     // Conexão com o PostgreSQL (tabela pacientes_pg — compartilhada com o monolito)
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],

@@ -5,12 +5,17 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { typeOrmConfig } from '../../config/database/typeorm.config';
 import { AtendimentosModule } from './modules/atendimentos/atendimentos.module';
+import { PrometheusModule } from '@willsoto/nestjs-prometheus';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
+    }),
+    PrometheusModule.register({
+      path: '/metrics',
+      defaultMetrics: { enabled: true },
     }),
     TypeOrmModule.forRootAsync(typeOrmConfig),
     AtendimentosModule, // Apenas o módulo estrangulado é importado
