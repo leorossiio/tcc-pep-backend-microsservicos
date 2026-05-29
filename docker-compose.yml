@@ -167,9 +167,14 @@ services:
     networks:
       - pep_network_ms
 
+  # no docker-compose.yml do MS, substitui o serviço k6 atual por:
   k6:
     image: grafana/k6:latest
     container_name: k6_pep_ms
+    environment:
+      - K6_PROMETHEUS_RW_SERVER_URL=http://prometheus:9090/api/v1/write
+      - K6_PROMETHEUS_RW_PUSH_INTERVAL=5s
+      - K6_PROMETHEUS_RW_TREND_AS_NATIVE_HISTOGRAM=false
     volumes:
       - ./k6-scripts:/scripts
     networks:
