@@ -27,7 +27,7 @@
 [CmdletBinding()]
 param(
   [ValidateSet('1', '2', '3')]
-  [string]$Scenario = '2',
+  [string]$Scenario = '3',
 
   [string]$SystemType = 'microsservicos'
 )
