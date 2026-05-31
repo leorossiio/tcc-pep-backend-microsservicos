@@ -1,0 +1,47 @@
+{
+  "title": "TCC PEP — Comparativo: Microsserviços × Monolito",
+  "uid": "tcc-pep-comparativo",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "5s",
+  "time": { "from": "now-30m", "to": "now" },
+  "timezone": "browser",
+  "tags": ["tcc", "pep", "k6", "comparativo", "microsservicos", "monolito"],
+  "templating": {
+    "list": [
+      {
+        "name": "scenario",
+        "label": "Cenário",
+        "type": "custom",
+        "query": "normal,dia-corrido,emergencia",
+        "current": { "text": "normal", "value": "normal" },
+        "options": [
+          { "text": "normal", "value": "normal", "selected": true },
+          { "text": "dia-corrido", "value": "dia-corrido", "selected": false },
+          { "text": "emergencia", "value": "emergencia", "selected": false }
+        ]
+      }
+    ]
+  },
+  "panels": [
+    {"id":1,"type":"row","title":"Resumo — MS vs Monolito (cenário: $scenario)","gridPos":{"h":1,"w":24,"x":0,"y":0},"collapsed":false},
+
+    {"id":2,"title":"Throughput (req/s) — Microsserviços","type":"stat","gridPos":{"h":4,"w":6,"x":0,"y":1},"options":{"graphMode":"area","colorMode":"background","reduceOptions":{"calcs":["lastNotNull"]}},"fieldConfig":{"defaults":{"unit":"reqps","color":{"mode":"fixed","fixedColor":"blue"}}},"targets":[{"datasource":"Prometheus","expr":"sum(rate(k6_http_reqs_total{test_scenario=\"$scenario\",system_type=\"microsservicos\"}[30s]))","legendFormat":"MS req/s"}]},
+    {"id":3,"title":"Throughput (req/s) — Monolito","type":"stat","gridPos":{"h":4,"w":6,"x":6,"y":1},"options":{"graphMode":"area","colorMode":"background","reduceOptions":{"calcs":["lastNotNull"]}},"fieldConfig":{"defaults":{"unit":"reqps","color":{"mode":"fixed","fixedColor":"orange"}}},"targets":[{"datasource":"Prometheus","expr":"sum(rate(k6_http_reqs_total{test_scenario=\"$scenario\",system_type=\"monolito\"}[30s]))","legendFormat":"Monolito req/s"}]},
+    {"id":4,"title":"p99 Latência — Microsserviços","type":"stat","gridPos":{"h":4,"w":6,"x":12,"y":1},"options":{"graphMode":"area","colorMode":"background","reduceOptions":{"calcs":["lastNotNull"]}},"fieldConfig":{"defaults":{"unit":"ms","color":{"mode":"fixed","fixedColor":"blue"}}},"targets":[{"datasource":"Prometheus","expr":"avg(k6_http_req_duration_p99{test_scenario=\"$scenario\",system_type=\"microsservicos\"}) * 1000","legendFormat":"MS p99"}]},
+    {"id":5,"title":"p99 Latência — Monolito","type":"stat","gridPos":{"h":4,"w":6,"x":18,"y":1},"options":{"graphMode":"area","colorMode":"background","reduceOptions":{"calcs":["lastNotNull"]}},"fieldConfig":{"defaults":{"unit":"ms","color":{"mode":"fixed","fixedColor":"orange"}}},"targets":[{"datasource":"Prometheus","expr":"avg(k6_http_req_duration_p99{test_scenario=\"$scenario\",system_type=\"monolito\"}) * 1000","legendFormat":"Monolito p99"}]},
+
+    {"id":6,"type":"row","title":"k6 — Latência e Throughput lado a lado","gridPos":{"h":1,"w":24,"x":0,"y":5},"collapsed":false},
+
+    {"id":7,"title":"p99 Latência Geral (ms) — MS vs Monolito","type":"timeseries","gridPos":{"h":8,"w":12,"x":0,"y":6},"fieldConfig":{"defaults":{"unit":"ms","custom":{"lineWidth":2,"fillOpacity":10}},"overrides":[{"matcher":{"id":"byName","options":"Microsserviços"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"blue"}}]},{"matcher":{"id":"byName","options":"Monolito"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"orange"}}]}]},"options":{"legend":{"displayMode":"table","placement":"right","calcs":["mean","max","lastNotNull"]},"tooltip":{"mode":"multi"}},"targets":[{"datasource":"Prometheus","expr":"avg(k6_http_req_duration_p99{test_scenario=\"$scenario\",system_type=\"microsservicos\"}) * 1000","legendFormat":"Microsserviços"},{"datasource":"Prometheus","expr":"avg(k6_http_req_duration_p99{test_scenario=\"$scenario\",system_type=\"monolito\"}) * 1000","legendFormat":"Monolito"}]},
+    {"id":8,"title":"Throughput (req/s) — MS vs Monolito","type":"timeseries","gridPos":{"h":8,"w":12,"x":12,"y":6},"fieldConfig":{"defaults":{"unit":"reqps","custom":{"lineWidth":2,"fillOpacity":10}},"overrides":[{"matcher":{"id":"byName","options":"Microsserviços"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"blue"}}]},{"matcher":{"id":"byName","options":"Monolito"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"orange"}}]}]},"options":{"legend":{"displayMode":"table","placement":"right","calcs":["mean","max","lastNotNull"]},"tooltip":{"mode":"multi"}},"targets":[{"datasource":"Prometheus","expr":"sum(rate(k6_http_reqs_total{test_scenario=\"$scenario\",system_type=\"microsservicos\"}[30s]))","legendFormat":"Microsserviços"},{"datasource":"Prometheus","expr":"sum(rate(k6_http_reqs_total{test_scenario=\"$scenario\",system_type=\"monolito\"}[30s]))","legendFormat":"Monolito"}]},
+
+    {"id":9,"title":"Taxa de Erros (%) — MS vs Monolito","type":"timeseries","gridPos":{"h":8,"w":12,"x":0,"y":14},"fieldConfig":{"defaults":{"unit":"percent","custom":{"lineWidth":2,"fillOpacity":10}},"overrides":[{"matcher":{"id":"byName","options":"Microsserviços"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"blue"}}]},{"matcher":{"id":"byName","options":"Monolito"},"properties":[{"id":"color","value":{"mode":"fixed","fixedColor":"orange"}}]}]},"options":{"legend":{"displayMode":"table","placement":"right","calcs":["mean","max","lastNotNull"]},"tooltip":{"mode":"multi"}},"targets":[{"datasource":"Prometheus","expr":"(avg(k6_http_req_failed_rate{test_scenario=\"$scenario\",system_type=\"microsservicos\"}) or vector(0)) * 100","legendFormat":"Microsserviços"},{"datasource":"Prometheus","expr":"(avg(k6_http_req_failed_rate{test_scenario=\"$scenario\",system_type=\"monolito\"}) or vector(0)) * 100","legendFormat":"Monolito"}]},
+    {"id":10,"title":"p99 por Endpoint (ms) — MS vs Monolito","type":"timeseries","gridPos":{"h":8,"w":12,"x":12,"y":14},"fieldConfig":{"defaults":{"unit":"ms","color":{"mode":"palette-classic"},"custom":{"lineWidth":2,"fillOpacity":5}}},"options":{"legend":{"displayMode":"table","placement":"right","calcs":["max","lastNotNull"]},"tooltip":{"mode":"multi"}},"targets":[{"datasource":"Prometheus","expr":"k6_http_req_duration_p99{test_scenario=\"$scenario\"} * 1000","legendFormat":"{{system_type}} — {{method}} {{name}}"}]},
+
+    {"id":11,"type":"row","title":"p99 por percentil e Checks","gridPos":{"h":1,"w":24,"x":0,"y":22},"collapsed":false},
+
+    {"id":12,"title":"Comparativo p99 atual (ms)","type":"bargauge","gridPos":{"h":6,"w":12,"x":0,"y":23},"options":{"orientation":"horizontal","reduceOptions":{"calcs":["lastNotNull"]},"displayMode":"gradient","showUnfilled":true},"fieldConfig":{"defaults":{"unit":"ms","min":0,"thresholds":{"mode":"absolute","steps":[{"color":"green","value":null},{"color":"yellow","value":800},{"color":"red","value":2000}]}}},"targets":[{"datasource":"Prometheus","expr":"avg(k6_http_req_duration_p99{test_scenario=\"$scenario\",system_type=\"microsservicos\"}) * 1000","legendFormat":"Microsserviços"},{"datasource":"Prometheus","expr":"avg(k6_http_req_duration_p99{test_scenario=\"$scenario\",system_type=\"monolito\"}) * 1000","legendFormat":"Monolito"}]},
+    {"id":13,"title":"Checks k6 — % Passando por sistema","type":"timeseries","gridPos":{"h":6,"w":12,"x":12,"y":23},"fieldConfig":{"defaults":{"unit":"percentunit","min":0,"max":1,"color":{"mode":"palette-classic"},"custom":{"lineWidth":2,"fillOpacity":5}}},"options":{"legend":{"displayMode":"table","placement":"right","calcs":["mean","lastNotNull"]},"tooltip":{"mode":"multi"}},"targets":[{"datasource":"Prometheus","expr":"k6_checks_rate{test_scenario=\"$scenario\"}","legendFormat":"{{system_type}} — {{check}}"}]}
+  ]
+}

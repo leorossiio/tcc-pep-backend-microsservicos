@@ -48,6 +48,10 @@ const SCENARIOS = {
 const scenarioKey      = __ENV.SCENARIO || '1';
 const selectedScenario = SCENARIOS[scenarioKey];
 
+// Permite diferenciar a arquitetura sob teste (microsservicos vs monolito)
+// nas mesmas dashboards do Grafana. Ex.: SYSTEM_TYPE=monolito
+const SYSTEM_TYPE = __ENV.SYSTEM_TYPE || 'microsservicos';
+
 if (!selectedScenario) {
   fail(`Cenario invalido: SCENARIO=${scenarioKey}. Use 1 (Normal), 2 (Dia Corrido) ou 3 (Emergencia).`);
 }
@@ -57,6 +61,7 @@ export const options = {
   thresholds: selectedScenario.thresholds,
   tags: {
     test_scenario: scenarioKey === '1' ? 'normal' : scenarioKey === '2' ? 'dia-corrido' : 'emergencia',
+    system_type: SYSTEM_TYPE,
   },
 };
 
@@ -129,11 +134,13 @@ export function setup() {
   const atendimentoId = atendimentoRes.atendimentoId ?? atendimentoRes.dados?.id ?? atendimentoRes.id;
 
   // ms-auditoria — registra o evento de setup
-  postJson(`${MS_AUDITORIA}/logs-auditoria`, {
-    acao: 'CREATE',
-    entidade: 'atendimento',
+  postJson(`${MS_AUDITORIA}/auditoria`, {
+    acaoRealizada: 'CREATE',
+    atendimentoId: atendimentoId,
+    ipOrigem: 'k6-setup',
+    entidadeAfetada: 'Atendimento',
     entidadeId: atendimentoId,
-    dadosNovos: { origem: 'k6-setup', medicoId: medico.id, pacienteId: paciente.id },
+    usuarioResponsavel: 'sistema',
   });
 
   console.log(`[setup] OK — medicoId=${medico.id} pacienteId=${paciente.id} atendimentoId=${atendimentoId}`);
@@ -196,6 +203,20 @@ export default function (data) {
   check(resAtendPaciente, {
     '[ms-atendimentos] GET atendimentos/paciente 200':    (r) => r.status === 200,
     '[ms-atendimentos] GET atendimentos/paciente <700ms': (r) => r.timings.duration < 700,
+  });
+  sleep(1);
+
+  // [6] Criar médico — ms-medicos (carga base/referência, sem auditoria assíncrona pesada)
+  // CRM único por VU+iteração+timestamp para não colidir (UNIQUE no banco -> 409)
+  const resMedico = postJson(`${MS_MEDICOS}/medicos`, {
+    nomeCompleto: `Dr. Carga VU${__VU}`,
+    crm: `K6V${__VU}I${__ITER}T${Date.now()}/SP`,
+    especialidade: 'Clinica Geral',
+    ativo: true,
+  });
+  check(resMedico, {
+    '[ms-medicos] POST medico 201':    (r) => r.status === 201,
+    '[ms-medicos] POST medico <500ms': (r) => r.timings.duration < 500,
   });
   sleep(1);
 }

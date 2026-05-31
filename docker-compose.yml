@@ -167,18 +167,33 @@ services:
     networks:
       - pep_network_ms
 
-  # no docker-compose.yml do MS, substitui o serviço k6 atual por:
+  # Executar sob demanda (não sobe no `docker compose up` por causa do profile):
+  #   docker compose run --rm -e SCENARIO=1 k6
+  #   docker compose run --rm -e SCENARIO=2 k6
+  #   docker compose run --rm -e SCENARIO=3 k6
+  # SCENARIO: 1=Normal | 2=Dia Corrido | 3=Emergência
+  # SYSTEM_TYPE: rótulo da arquitetura sob teste (default microsservicos)
   k6:
     image: grafana/k6:latest
     container_name: k6_pep_ms
+    profiles: ["load-test"]
     environment:
       - K6_PROMETHEUS_RW_SERVER_URL=http://prometheus:9090/api/v1/write
       - K6_PROMETHEUS_RW_PUSH_INTERVAL=5s
       - K6_PROMETHEUS_RW_TREND_AS_NATIVE_HISTOGRAM=false
+      - SCENARIO=${SCENARIO:-1}
+      - SYSTEM_TYPE=${SYSTEM_TYPE:-microsservicos}
+    command: ["run", "-o", "experimental-prometheus-rw", "/scripts/cenario-emergencia-ms.js"]
     volumes:
       - ./k6-scripts:/scripts
     networks:
       - pep_network_ms
+    depends_on:
+      - ms-medicos
+      - ms-pacientes
+      - ms-atendimentos
+      - ms-auditoria
+      - prometheus
 
 volumes:
   postgres_ms_data:
