@@ -236,14 +236,7 @@ export default function (data) {
   registra('op4', r4);
   sleep(1);
 
-  // REQ 5 — Listar atendimentos do paciente
-  const r5 = http.get(`${MS_ATENDIMENTOS}/atendimentos/paciente/${pacienteId}`, { tags: { name: 'GET /atendimentos/paciente/:id' } });
-  check(r5, {
-    '[ms] GET atendimentos/paciente 200':    (r) => r.status === 200,
-    '[ms] GET atendimentos/paciente <700ms': (r) => r.timings.duration < 700,
-  });
-  registra('op5', r5);
-  sleep(1);
+  // REQ 5 — REMOVIDA, não exste o endpoint comparativo no monolito
 
   // REQ 6 — POST medico (linha de base de escrita simples)
   const r6 = postJson(`${MS_MEDICOS}/medicos`, {
