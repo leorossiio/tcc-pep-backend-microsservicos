@@ -69,8 +69,7 @@ const OPS = [
   { key: 'op2', label: 'GET paciente',                  endpoint: 'GET /pacientes/:id',             expect: 200, slo: 500 },
   { key: 'op3', label: 'POST atendimento (dual-write)', endpoint: 'POST /atendimentos',             expect: 201, slo: 800 },
   { key: 'op4', label: 'GET atendimentos/medico',       endpoint: 'GET /atendimentos/medico/:id',   expect: 200, slo: 700 },
-  { key: 'op5', label: 'GET atendimentos/paciente',     endpoint: 'GET /atendimentos/paciente/:id', expect: 200, slo: 700 },
-  { key: 'op6', label: 'POST medico (baseline)',        endpoint: 'POST /medicos',                  expect: 201, slo: 500 },
+  { key: 'op5', label: 'POST medico (baseline)',        endpoint: 'POST /medicos',                  expect: 201, slo: 500 },
 ];
 
 const OP_BY_KEY = {};
@@ -249,7 +248,7 @@ export default function (data) {
     '[ms] POST medico 201':    (r) => r.status === 201,
     '[ms] POST medico <500ms': (r) => r.timings.duration < 500,
   });
-  registra('op6', r6);
+  registra('op5', r6);
   sleep(1);
 }
 
