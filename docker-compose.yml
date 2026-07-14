@@ -132,7 +132,29 @@ services:
         limits:
           cpus: '1.0'
           memory: 1G
-
+  mongo-pep-ms:
+    image: mongo:6.0
+    container_name: db_mongo_ms
+    restart: always
+    env_file:
+      - .env
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
+      - MONGO_INITDB_DATABASE=${MONGO_INITDB_DATABASE:-pep_nao_relacional}
+    ports:
+      - "${MONGO_PORT}:27017"
+    volumes:
+      - mongo_ms_data:/data/db
+      # Mantenha a linha abaixo apenas se você tiver scripts de inicialização/migração na pasta
+      - ./migrations/mongo:/docker-entrypoint-initdb.d
+    networks:
+      - pep_network
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
   prometheus:
     image: prom/prometheus:latest
     container_name: prometheus_pep_ms
@@ -199,6 +221,7 @@ volumes:
   postgres_ms_data:
   prometheus_ms_data:
   grafana_ms_data:
+  mongo_ms_data:
 
 networks:
   pep_network_ms:
