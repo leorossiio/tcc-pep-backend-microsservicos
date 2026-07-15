@@ -149,7 +149,7 @@ services:
       # Mantenha a linha abaixo apenas se você tiver scripts de inicialização/migração na pasta
       - ./migrations/mongo:/docker-entrypoint-initdb.d
     networks:
-      - pep_network
+      - pep_network_ms
     deploy:
       resources:
         limits:
