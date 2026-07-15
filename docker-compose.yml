@@ -110,6 +110,68 @@ services:
           cpus: '1.0'
           memory: 512M
 
+  ms-consultas-laudos:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - APP_NAME=ms-consultas-laudos
+    container_name: ms_consultas_laudos
+    restart: always
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - PORT_CONSULTAS_LAUDOS=3005
+      - MONGO_HOST=mongo-pep-ms
+      - MONGO_PORT=27017
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
+      - MONGO_INITDB_DATABASE=${MONGO_INITDB_DATABASE:-pep_nao_relacional}
+      - URL_AUDITORIA=http://ms_auditoria:3004/auditoria
+    ports:
+      - "3005:3005"
+    depends_on:
+      - mongo-pep-ms
+    networks:
+      - pep_network_ms
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+
+  ms-historico-clinicos:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - APP_NAME=ms-historico-clinicos
+    container_name: ms_historico_clinicos
+    restart: always
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - PORT_HISTORICO_CLINICOS=3006
+      - MONGO_HOST=mongo-pep-ms
+      - MONGO_PORT=27017
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
+      - MONGO_INITDB_DATABASE=${MONGO_INITDB_DATABASE:-pep_nao_relacional}
+      - URL_AUDITORIA=http://ms_auditoria:3004/auditoria
+    ports:
+      - "3006:3006"
+    depends_on:
+      - mongo-pep-ms
+    networks:
+      - pep_network_ms
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+
   postgres-pep-ms:
     image: postgres:15-alpine
     container_name: db_postgres_pep_ms
@@ -132,6 +194,7 @@ services:
         limits:
           cpus: '1.0'
           memory: 1G
+
   mongo-pep-ms:
     image: mongo:6.0
     container_name: db_mongo_ms
@@ -146,7 +209,6 @@ services:
       - "${MONGO_PORT}:27017"
     volumes:
       - mongo_ms_data:/data/db
-      # Mantenha a linha abaixo apenas se você tiver scripts de inicialização/migração na pasta
       - ./migrations/mongo:/docker-entrypoint-initdb.d
     networks:
       - pep_network_ms
@@ -155,6 +217,7 @@ services:
         limits:
           cpus: '1.0'
           memory: 1G
+
   prometheus:
     image: prom/prometheus:latest
     container_name: prometheus_pep_ms
@@ -176,7 +239,7 @@ services:
     container_name: grafana_pep_ms
     restart: always
     ports:
-      - "3006:3000" # Ajustado para não colidir com o 3005 do monolito
+      - "3008:3000" # Ajustado para 3008 para não colidir com o ms-historico-clinicos (3006)
     environment:
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=admin
@@ -189,12 +252,6 @@ services:
     networks:
       - pep_network_ms
 
-  # Executar sob demanda (não sobe no `docker compose up` por causa do profile):
-  #   docker compose run --rm -e SCENARIO=1 k6
-  #   docker compose run --rm -e SCENARIO=2 k6
-  #   docker compose run --rm -e SCENARIO=3 k6
-  # SCENARIO: 1=Normal | 2=Dia Corrido | 3=Emergência
-  # SYSTEM_TYPE: rótulo da arquitetura sob teste (default microsservicos)
   k6:
     image: grafana/k6:latest
     container_name: k6_pep_ms
@@ -215,6 +272,8 @@ services:
       - ms-pacientes
       - ms-atendimentos
       - ms-auditoria
+      - ms-consultas-laudos
+      - ms-historico-clinicos
       - prometheus
 
 volumes:

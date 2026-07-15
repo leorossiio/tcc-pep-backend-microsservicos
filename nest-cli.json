@@ -35,6 +35,24 @@
         "tsConfigPath": "apps/ms-auditoria/tsconfig.app.json"
       }
     },
+    "ms-consultas-laudos": {
+      "type": "application",
+      "root": "apps/ms-consultas-laudos",
+      "entryFile": "main",
+      "sourceRoot": "apps/ms-consultas-laudos/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/ms-consultas-laudos/tsconfig.app.json"
+      }
+    },
+    "ms-historico-clinicos": {
+      "type": "application",
+      "root": "apps/ms-historico-clinicos",
+      "entryFile": "main",
+      "sourceRoot": "apps/ms-historico-clinicos/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/ms-historico-clinicos/tsconfig.app.json"
+      }
+    },
     "ms-medicos": {
       "type": "application",
       "root": "apps/ms-medicos",

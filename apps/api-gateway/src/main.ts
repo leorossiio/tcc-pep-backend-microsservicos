@@ -41,6 +41,23 @@ async function bootstrap() {
     }),
   );
 
+  app.use(
+    '/consultas-laudos',
+    createProxyMiddleware({
+      target: 'http://localhost:3005',
+      changeOrigin: true,
+    }),
+  );
+
+  // Roteamento para Histórico Clínico (Porta 3006)
+  app.use(
+    '/historico-clinicos',
+    createProxyMiddleware({
+      target: 'http://localhost:3006',
+      changeOrigin: true,
+    }),
+  );
+
   // O API Gateway vai rodar na porta 4000
   await app.listen(4000);
   console.log('🚀 API Gateway rodando na porta 4000');
