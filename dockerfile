@@ -2,7 +2,8 @@ FROM node:20-alpine AS builder
 ARG APP_NAME
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci
+# Adicionada a flag --legacy-peer-deps para resolver o conflito de versões do Express v4 vs v5
+RUN npm ci --legacy-peer-deps
 COPY . .
 RUN npx nest build ${APP_NAME}
 
