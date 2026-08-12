@@ -2,15 +2,21 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { ConsultasLaudosRepository } from '../repositories/consultas-laudos.repository';
 import { CreateConsultaLaudoDto } from '../dto/create-consulta-laudo.dto';
 import { UpdateConsultaLaudoDto } from '../dto/update-consulta-laudo.dto';
-// import { CryptoUtil } from '@pep/common'; // Descomente quando integrar a sua lib
+import { hashDocument } from '../../../../../../libs/common/src/utils/crypto.util';
 
 @Injectable()
 export class ConsultasLaudosService {
-  constructor(private readonly consultasLaudosRepository: ConsultasLaudosRepository) {}
+  constructor(
+    private readonly consultasLaudosRepository: ConsultasLaudosRepository,
+  ) {}
 
   async create(createConsultaLaudoDto: CreateConsultaLaudoDto) {
     if (!createConsultaLaudoDto.hash_integridade) {
-      createConsultaLaudoDto.hash_integridade = 'hash-temporario-gerado-pelo-backend';
+      // 1. Cria uma cópia rasa dos dados do DTO
+      const dadosParaAssinar = { ...createConsultaLaudoDto };
+      
+      // 2. Gera o hash SHA-256 real baseado no conteúdo e atribui ao DTO
+      createConsultaLaudoDto.hash_integridade = hashDocument(dadosParaAssinar);
     }
 
     return this.consultasLaudosRepository.create(createConsultaLaudoDto);

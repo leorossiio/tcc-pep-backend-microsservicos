@@ -1,6 +1,8 @@
+//Atendimento.service.ts
 import { Injectable, NotFoundException, InternalServerErrorException } from '@nestjs/common';
 import { Request } from 'express';
 import { HttpService } from '@nestjs/axios';
+import { firstValueFrom } from 'rxjs';
 import { AtendimentosRepository } from '../repositories/atendimentos.repository';
 import { CreateAtendimentoDto } from '../dto/create-atendimento.dto';
 import { UpdateAtendimentoDto } from '../dto/update-atendimento.dto';
@@ -8,7 +10,8 @@ import { Atendimento } from '../entities/atendimento.entity';
 
 @Injectable()
 export class AtendimentosService {
-  private readonly urlAuditoria = process.env.URL_AUDITORIA || 'http://localhost:3004/auditoria';
+  private readonly urlAuditoria = process.env.URL_AUDITORIA || 'http://ms-auditoria:3004/logs-auditoria';
+  private readonly urlLaudos = process.env.URL_CONSULTAS_LAUDOS || 'http://ms-consultas-laudos:3005/consultas-laudos';
 
   constructor(
     private readonly atendimentosRepository: AtendimentosRepository,
@@ -24,7 +27,6 @@ export class AtendimentosService {
 
   // Disparo assíncrono para ms-auditoria
   private dispararAuditoria(atendimentoId: string, acao: string, usuarioId: string | null, req?: Request) {
-   
     const isRemocao = acao.includes('removido');
 
     const payload = {
@@ -74,10 +76,29 @@ export class AtendimentosService {
   async findComLaudosByMedicoId(medicoId: string) {
     const atendimentos = await this.atendimentosRepository.findByMedicoTriagemId(medicoId);
     
-    return atendimentos.map((a) => ({
-      ...a,
-      consultasLaudos: [], 
-    }));
+    // Join Poliglota Real: Busca os laudos via HTTP para cada atendimento
+    const atendimentosComLaudos = await Promise.all(
+      atendimentos.map(async (atendimento) => {
+        let laudos = [];
+        try {
+          // Faz o GET na rota do ms-consultas-laudos filtrando pelo atendimentoId
+          const response = await firstValueFrom(
+            this.httpService.get(`${this.urlLaudos}/atendimento/${atendimento.id}`)
+          );
+          laudos = response.data;
+        } catch (error) {
+          // Correção do TypeScript: (error as Error)
+          console.warn(`[ms-atendimentos] Aviso: Não foi possível carregar laudos do atendimento ${atendimento.id}:`, (error as Error).message);
+        }
+
+        return {
+          ...atendimento,
+          consultasLaudos: laudos, 
+        };
+      })
+    );
+
+    return atendimentosComLaudos;
   }
 
   async findByIds(ids: string[]): Promise<Atendimento[]> {
@@ -89,8 +110,20 @@ export class AtendimentosService {
     if (!atendimento) {
       throw new NotFoundException(`Atendimento com ID "${id}" não encontrado`);
     }
-    // Fake join poliglota para manter o contrato de API igual ao Monolito
-    return { ...atendimento, consultasLaudos: [] };
+    
+    // Join Poliglota Real para um único atendimento
+    let laudos = [];
+    try {
+      const response = await firstValueFrom(
+        this.httpService.get(`${this.urlLaudos}/atendimento/${id}`)
+      );
+      laudos = response.data;
+    } catch (error) {
+      // Correção do TypeScript: (error as Error)
+      console.warn(`[ms-atendimentos] Aviso: Não foi possível carregar laudos do atendimento ${id}:`, (error as Error).message);
+    }
+
+    return { ...atendimento, consultasLaudos: laudos };
   }
 
   async update(id: string, dto: UpdateAtendimentoDto, req?: Request) {

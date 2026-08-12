@@ -2,15 +2,19 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { HistoricoClinicosRepository } from '../repositories/historico-clinicos.repository';
 import { CreateHistoricoClinicoDto } from '../dto/create-historico-clinico.dto';
 import { UpdateHistoricoClinicoDto } from '../dto/update-historico-clinico.dto';
+import { hashDocument } from '@pep/common/utils/crypto.util';
 
 @Injectable()
 export class HistoricoClinicosService {
   constructor(private readonly historicoClinicosRepository: HistoricoClinicosRepository) {}
 
   async create(createHistoricoClinicoDto: CreateHistoricoClinicoDto) {
-    // Fallback temporário para integridade LGPD
     if (!createHistoricoClinicoDto.hash_integridade) {
-      createHistoricoClinicoDto.hash_integridade = 'hash-temporario-gerado-pelo-backend';
+      // 1. Cria uma cópia rasa dos dados do DTO
+      const dadosParaAssinar = { ...createHistoricoClinicoDto };
+      
+      // 2. Gera o hash SHA-256 real baseado no conteúdo e atribui ao DTO
+      createHistoricoClinicoDto.hash_integridade = hashDocument(dadosParaAssinar);
     }
 
     return this.historicoClinicosRepository.create(createHistoricoClinicoDto);

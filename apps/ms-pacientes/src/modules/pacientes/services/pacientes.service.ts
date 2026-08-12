@@ -2,7 +2,7 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { Request } from 'express';
 import { HttpService } from '@nestjs/axios';
-import { hashCpf, encryptNome, decryptNome } from '../../../common/utils/crypto.util';
+import { hashCpf, encryptNome, decryptNome } from '../../../../../../libs/common/src/utils/crypto.util';
 import { PacientesRepository } from '../repositories/pacientes.repository';
 import { CreatePacienteDto } from '../dto/create-paciente.dto';
 import { UpdatePacienteDto } from '../dto/update-paciente.dto';
