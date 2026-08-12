@@ -10,6 +10,8 @@ scrape_configs:
         - 'ms-pacientes:3002'
         - 'ms-atendimentos:3003'
         - 'ms-auditoria:3004'
+        - 'ms-consultas-laudos:3005'
+        - 'ms-historico-clinicos:3006'
 
   - job_name: 'prometheus'
     static_configs:

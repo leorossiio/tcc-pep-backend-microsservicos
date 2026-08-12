@@ -5,61 +5,26 @@ import { createProxyMiddleware } from 'http-proxy-middleware';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // Roteamento para Médicos (Porta 3001)
-  app.use(
-    '/medicos',
-    createProxyMiddleware({
-      target: 'http://localhost:3001',
-      changeOrigin: true,
-    }),
-  );
+  // Em Docker cada serviço roda em seu próprio container: "localhost" aqui
+  // dentro se refere ao próprio api-gateway, não aos outros serviços.
+  // Por isso os alvos vêm de variáveis de ambiente (nome do container/DNS
+  // interno da rede pep_network_ms), com fallback para localhost apenas
+  // para rodar tudo fora do Docker durante desenvolvimento local.
+  const routes: Record<string, string> = {
+    '/medicos': process.env.URL_MEDICOS || 'http://localhost:3001',
+    '/pacientes': process.env.URL_PACIENTES || 'http://localhost:3002',
+    '/atendimentos': process.env.URL_ATENDIMENTOS || 'http://localhost:3003',
+    '/auditoria': process.env.URL_AUDITORIA || 'http://localhost:3004',
+    '/consultas-laudos': process.env.URL_CONSULTAS_LAUDOS || 'http://localhost:3005',
+    '/historico-clinicos': process.env.URL_HISTORICO_CLINICOS || 'http://localhost:3006',
+  };
 
-  // Roteamento para Pacientes (Porta 3002)
-  app.use(
-    '/pacientes',
-    createProxyMiddleware({
-      target: 'http://localhost:3002', 
-      changeOrigin: true,
-    }),
-  );
+  for (const [path, target] of Object.entries(routes)) {
+    app.use(path, createProxyMiddleware({ target, changeOrigin: true }));
+  }
 
-  // Roteamento para Atendimentos (Porta 3003)
-  app.use(
-    '/atendimentos',
-    createProxyMiddleware({
-      target: 'http://localhost:3003',
-      changeOrigin: true,
-    }),
-  );
-
-  // Roteamento para Auditoria (Porta 3004)
-  app.use(
-    '/auditoria',
-    createProxyMiddleware({
-      target: 'http://localhost:3004',
-      changeOrigin: true,
-    }),
-  );
-
-  app.use(
-    '/consultas-laudos',
-    createProxyMiddleware({
-      target: 'http://localhost:3005',
-      changeOrigin: true,
-    }),
-  );
-
-  // Roteamento para Histórico Clínico (Porta 3006)
-  app.use(
-    '/historico-clinicos',
-    createProxyMiddleware({
-      target: 'http://localhost:3006',
-      changeOrigin: true,
-    }),
-  );
-
-  // O API Gateway vai rodar na porta 4000
-  await app.listen(4000);
-  console.log('🚀 API Gateway rodando na porta 4000');
+  const port = process.env.PORT_GATEWAY || 4000;
+  await app.listen(port);
+  console.log(`🚀 API Gateway rodando na porta ${port}`);
 }
 bootstrap();

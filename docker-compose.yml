@@ -1,4 +1,40 @@
 services:
+  api-gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - APP_NAME=api-gateway
+    container_name: api_gateway
+    restart: always
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - PORT_GATEWAY=4000
+      - URL_MEDICOS=http://ms_medicos:3001
+      - URL_PACIENTES=http://ms_pacientes:3002
+      - URL_ATENDIMENTOS=http://ms_atendimentos:3003
+      - URL_AUDITORIA=http://ms_auditoria:3004
+      - URL_CONSULTAS_LAUDOS=http://ms_consultas_laudos:3005
+      - URL_HISTORICO_CLINICOS=http://ms_historico_clinicos:3006
+    ports:
+      - "4000:4000"
+    depends_on:
+      - ms-medicos
+      - ms-pacientes
+      - ms-atendimentos
+      - ms-auditoria
+      - ms-consultas-laudos
+      - ms-historico-clinicos
+    networks:
+      - pep_network_ms
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+
   ms-medicos:
     build:
       context: .
@@ -206,10 +242,9 @@ services:
       - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
       - MONGO_INITDB_DATABASE=${MONGO_INITDB_DATABASE:-pep_nao_relacional}
     ports:
-      - "${MONGO_PORT}:27017"
+      - "${DOCKER_MONGO_PORT_EXTERNAL:-27018}:27017"
     volumes:
       - mongo_ms_data:/data/db
-      - ./migrations/mongo:/docker-entrypoint-initdb.d
     networks:
       - pep_network_ms
     deploy:
