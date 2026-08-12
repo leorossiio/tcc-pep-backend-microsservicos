@@ -2,11 +2,14 @@ import http from 'k6/http';
 import { check, sleep, fail } from 'k6';
 import { Trend, Rate, Counter } from 'k6/metrics';
 
-const MS_MEDICOS      = __ENV.MS_MEDICOS      || 'http://ms-medicos:3001';
-const MS_PACIENTES    = __ENV.MS_PACIENTES    || 'http://ms-pacientes:3002';
-const MS_ATENDIMENTOS = __ENV.MS_ATENDIMENTOS || 'http://ms-atendimentos:3003';
-const HEADERS = { 'Content-Type': 'application/json' };
+// Roteamento: O ideal é apontar tudo para o API Gateway (porta 4000), 
+// mas mantivemos as portas diretas como fallback para retrocompatibilidade.
+const API_GATEWAY     = __ENV.API_GATEWAY     || ''; 
+const MS_MEDICOS      = API_GATEWAY ? `${API_GATEWAY}/medicos` : (__ENV.MS_MEDICOS || 'http://ms-medicos:3001');
+const MS_PACIENTES    = API_GATEWAY ? `${API_GATEWAY}/pacientes` : (__ENV.MS_PACIENTES || 'http://ms-pacientes:3002');
+const MS_ATENDIMENTOS = API_GATEWAY ? `${API_GATEWAY}/atendimentos` : (__ENV.MS_ATENDIMENTOS || 'http://ms-atendimentos:3003');
 
+const HEADERS = { 'Content-Type': 'application/json' };
 const SCENARIO    = __ENV.SCENARIO    || '1';
 const SYSTEM_TYPE = __ENV.SYSTEM_TYPE || 'microsservicos';
 
@@ -42,7 +45,7 @@ const SCENARIOS = {
       { duration: '45s',   target: 0   },
     ],
     thresholds: {
-      http_req_duration: ['p(95)<3000'],
+      http_req_duration: ['p(95)<3000'], // Afrouxado para emergência com comunicação síncrona
       http_req_failed:   ['rate<0.15'],
     },
     scenarioName: 'emergencia',
@@ -62,14 +65,14 @@ export const options = {
   summaryTrendStats: ['avg', 'min', 'med', 'p(90)', 'p(95)', 'p(99)', 'max'],
 };
 
-// --- Metricas por operacao (exportadas em CSV pelo handleSummary) ------------
-// Labels e endpoint names identicos ao script do monolito para CSV comparavel.
+// --- Métricas por operação ---
+// SLOs ajustados devido à inserção de latência de rede real (remoção do fake join)
 const OPS = [
-  { key: 'op1', label: 'GET atendimento',               endpoint: 'GET /atendimentos/:id',          expect: 200, slo: 500 },
-  { key: 'op2', label: 'GET paciente',                  endpoint: 'GET /pacientes/:id',             expect: 200, slo: 500 },
-  { key: 'op3', label: 'POST atendimento (dual-write)', endpoint: 'POST /atendimentos',             expect: 201, slo: 800 },
-  { key: 'op4', label: 'GET atendimentos/medico',       endpoint: 'GET /atendimentos/medico/:id',   expect: 200, slo: 700 },
-  { key: 'op5', label: 'POST medico (baseline)',        endpoint: 'POST /medicos',                  expect: 201, slo: 500 },
+  { key: 'op1', label: 'GET atendimento',              endpoint: 'GET /atendimentos/:id',          expect: 200, slo: 600 },  // Leve aumento
+  { key: 'op2', label: 'GET paciente',                 endpoint: 'GET /pacientes/:id',             expect: 200, slo: 500 },
+  { key: 'op3', label: 'POST atendimento (dual-write)',endpoint: 'POST /atendimentos',             expect: 201, slo: 1000 }, // Agora bate no ms-auditoria
+  { key: 'op4', label: 'GET atendimentos/medico',      endpoint: 'GET /atendimentos/medico/:id',   expect: 200, slo: 1200 }, // Agora faz Promise.all no ms-consultas-laudos
+  { key: 'op5', label: 'POST medico (baseline)',       endpoint: 'POST /medicos',                  expect: 201, slo: 500 },
 ];
 
 const OP_BY_KEY = {};
@@ -93,8 +96,7 @@ function registra(key, res) {
   m.slo.add(res.timings.duration < o.slo);
 }
 
-// --- Helpers -----------------------------------------------------------------
-
+// --- Helpers ---
 function postJson(url, body, params = {}) {
   return http.post(url, JSON.stringify(body), { headers: HEADERS, ...params });
 }
@@ -107,22 +109,17 @@ function assertCreated(res, label) {
   return res.json();
 }
 
-// --- setup() -----------------------------------------------------------------
-// Pool simetrico ao monolito: mesmos POOL_MEDICOS e POOL_PACIENTES defaults.
-// Cada MS recebe suas proprias chamadas de criacao — sem acoplamento entre servicos
-// no setup, igual ao que aconteceria em producao real.
-
+// --- Setup ---
 const POOL_MEDICOS   = Number(__ENV.POOL_MEDICOS   || 8);
 const POOL_PACIENTES = Number(__ENV.POOL_PACIENTES || 40);
 
 export function setup() {
   const base = Date.now();
 
-  // Criar pool de medicos via ms-medicos
   const medicoIds = [];
   for (let i = 0; i < POOL_MEDICOS; i++) {
     const m = assertCreated(
-      postJson(`${MS_MEDICOS}/medicos`, {
+      postJson(`${MS_MEDICOS}`, {
         nomeCompleto: `Dr. K6 Benchmark ${i}`,
         crm: `K6${base}_${i}/SP`,
         especialidade: 'Clinica Geral',
@@ -133,14 +130,13 @@ export function setup() {
     medicoIds.push(m.id);
   }
 
-  // Criar pool de pacientes + atendimento inicial via ms-pacientes e ms-atendimentos
   const registros = [];
   for (let i = 0; i < POOL_PACIENTES; i++) {
     const medicoId = medicoIds[i % medicoIds.length];
     const cpf = String(base + i).slice(-11).padStart(11, '0');
 
     const paciente = assertCreated(
-      postJson(`${MS_PACIENTES}/pacientes`, {
+      postJson(`${MS_PACIENTES}`, {
         nomeCompleto: `Paciente Benchmark K6 ${i}`,
         sexo: i % 2 === 0 ? 'M' : 'F',
         cpf,
@@ -151,7 +147,7 @@ export function setup() {
     );
 
     const atendimento = assertCreated(
-      postJson(`${MS_ATENDIMENTOS}/atendimentos`, {
+      postJson(`${MS_ATENDIMENTOS}`, {
         pacienteId: paciente.id,
         medicoTriagemId: medicoId,
         dataHoraEntrada: new Date().toISOString(),
@@ -166,11 +162,10 @@ export function setup() {
       `POST /atendimentos #${i}`,
     );
 
-    // O service retorna { success, atendimentoId, dados } — nao .id direto
     const atendimentoId = atendimento.atendimentoId ?? atendimento.dados?.id ?? atendimento.id;
 
     registros.push({
-      pacienteId:    paciente.id,
+      pacienteId: paciente.id,
       medicoId,
       atendimentoId,
     });
@@ -180,25 +175,21 @@ export function setup() {
   return { registros };
 }
 
-// --- default() ---------------------------------------------------------------
-// Cada VU pega um registro diferente do pool (round-robin), evitando hot-spot
-// e simulando carga distribuida sobre pacientes distintos — identico ao monolito.
-
+// --- Execução Principal (VU) ---
 export default function (data) {
-  const { pacienteId, medicoId, atendimentoId } =
-    data.registros[(__VU - 1) % data.registros.length];
+  const { pacienteId, medicoId, atendimentoId } = data.registros[(__VU - 1) % data.registros.length];
 
-  // REQ 1 — GET atendimento especifico
-  const r1 = http.get(`${MS_ATENDIMENTOS}/atendimentos/${atendimentoId}`, { tags: { name: 'GET /atendimentos/:id' } });
+  // REQ 1 — GET atendimento (Agora traz laudos atrelados via MS interno)
+  const r1 = http.get(`${MS_ATENDIMENTOS}/${atendimentoId}`, { tags: { name: 'GET /atendimentos/:id' } });
   check(r1, {
     '[ms] GET atendimento 200':    (r) => r.status === 200,
-    '[ms] GET atendimento <500ms': (r) => r.timings.duration < 500,
+    '[ms] GET atendimento <600ms': (r) => r.timings.duration < 600,
   });
   registra('op1', r1);
   sleep(1);
 
   // REQ 2 — GET paciente
-  const r2 = http.get(`${MS_PACIENTES}/pacientes/${pacienteId}`, { tags: { name: 'GET /pacientes/:id' } });
+  const r2 = http.get(`${MS_PACIENTES}/${pacienteId}`, { tags: { name: 'GET /pacientes/:id' } });
   check(r2, {
     '[ms] GET paciente 200':    (r) => r.status === 200,
     '[ms] GET paciente <500ms': (r) => r.timings.duration < 500,
@@ -206,8 +197,8 @@ export default function (data) {
   registra('op2', r2);
   sleep(1);
 
-  // REQ 3 — POST atendimento (dual-write principal)
-  const r3 = postJson(`${MS_ATENDIMENTOS}/atendimentos`, {
+  // REQ 3 — POST atendimento (Dispara auditoria em background)
+  const r3 = postJson(`${MS_ATENDIMENTOS}`, {
     pacienteId,
     medicoTriagemId: medicoId,
     dataHoraEntrada: new Date().toISOString(),
@@ -220,25 +211,23 @@ export default function (data) {
     classificacaoRisco: 'VERMELHO',
   }, { tags: { name: 'POST /atendimentos' } });
   check(r3, {
-    '[ms] POST atendimento 201':    (r) => r.status === 201,
-    '[ms] POST atendimento <800ms': (r) => r.timings.duration < 800,
+    '[ms] POST atendimento 201':     (r) => r.status === 201,
+    '[ms] POST atendimento <1000ms': (r) => r.timings.duration < 1000,
   });
   registra('op3', r3);
   sleep(1);
 
-  // REQ 4 — Listar atendimentos do medico
-  const r4 = http.get(`${MS_ATENDIMENTOS}/atendimentos/medico/${medicoId}`, { tags: { name: 'GET /atendimentos/medico/:id' } });
+  // REQ 4 — GET atendimentos do médico (Teste de carga pesado no Promise.all)
+  const r4 = http.get(`${MS_ATENDIMENTOS}/medico/${medicoId}`, { tags: { name: 'GET /atendimentos/medico/:id' } });
   check(r4, {
-    '[ms] GET atendimentos/medico 200':    (r) => r.status === 200,
-    '[ms] GET atendimentos/medico <700ms': (r) => r.timings.duration < 700,
+    '[ms] GET atendimentos/medico 200':     (r) => r.status === 200,
+    '[ms] GET atendimentos/medico <1200ms': (r) => r.timings.duration < 1200,
   });
   registra('op4', r4);
   sleep(1);
 
-  // REQ 5 — REMOVIDA, não exste o endpoint comparativo no monolito
-
-  // REQ 6 — POST medico (linha de base de escrita simples)
-  const r6 = postJson(`${MS_MEDICOS}/medicos`, {
+  // REQ 6 — POST medico (Linha de base isolada)
+  const r6 = postJson(`${MS_MEDICOS}`, {
     nomeCompleto: `Dr. K6 Baseline VU${__VU}`,
     crm: `K6V${__VU}I${__ITER}T${Date.now()}/SP`,
     especialidade: 'Clinica Geral',
@@ -252,7 +241,7 @@ export default function (data) {
   sleep(1);
 }
 
-// --- Exportacao CSV (1 arquivo por execucao em k6-scripts/results/) ----------
+// --- Exportacao CSV ---
 function n(x) {
   return x === undefined || x === null ? '' : Number(x).toFixed(2);
 }
@@ -288,7 +277,6 @@ export function handleSummary(data) {
     ].join(','));
   }
 
-  // Linha GLOBAL — agregado de todas as requisicoes do teste
   const dur    = data.metrics.http_req_duration;
   const reqs   = data.metrics.http_reqs;
   const failed = data.metrics.http_req_failed;

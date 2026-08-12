@@ -1,10 +1,12 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './api-gateway.module';
 import { createProxyMiddleware } from 'http-proxy-middleware';
+import { AllExceptionsFilter } from '@pep/common/filters/all-exceptions.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  app.useGlobalFilters(new AllExceptionsFilter());
   // Em Docker cada serviço roda em seu próprio container: "localhost" aqui
   // dentro se refere ao próprio api-gateway, não aos outros serviços.
   // Por isso os alvos vêm de variáveis de ambiente (nome do container/DNS
