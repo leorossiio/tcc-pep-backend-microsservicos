@@ -1,72 +1,99 @@
-<#
-.SYNOPSIS
-  Executa os testes de carga k6 contra os microsserviços PEP.
-
-.DESCRIPTION
-  Sobe (se necessário) o k6 via docker compose e dispara o cenário escolhido,
-  marcando as métricas com a tag system_type para comparação MS x Monolito.
-
-.PARAMETER Scenario
-  Cenário de carga: 1 = Normal, 2 = Dia Corrido, 3 = Emergência. Default: 1.
-
-.PARAMETER SystemType
-  Rótulo da arquitetura sob teste (vira label no Prometheus). Default: microsservicos.
-
-.EXAMPLE
-  .\run-k6.ps1
-  Roda o cenário Normal (1) marcando como microsservicos.
-
-.EXAMPLE
-  .\run-k6.ps1 -Scenario 2
-  Roda o cenário Dia Corrido.
-
-.EXAMPLE
-  .\run-k6.ps1 -Scenario 3 -SystemType monolito
-  Roda o cenário Emergência marcando as métricas como monolito.
-#>
-[CmdletBinding()]
+# Para rodar em Windows: .\run-k6.ps1
+#   .\run-k6.ps1            -> zera os bancos (docker compose down -v) antes de cada teste
+#   .\run-k6.ps1 -KeepData  -> NAO zera; mantem os dados/metricas acumulados
 param(
-  [ValidateSet('1', '2', '3')]
-  [string]$Scenario = '3',
-
-  [string]$SystemType = 'microsservicos'
+  [switch]$KeepData
 )
 
-$ErrorActionPreference = 'Stop'
+# --- Configurações da Arquitetura --------------------------------------------
+$arqName = "MICROSSERVIÇOS"
+$scriptFile = "/scripts/cenario-comparativo-ms.js"
+$network = "tcc-pep-backend-microsservicos_pep_network_ms" 
+$healthUrl = "http://localhost:4000" # URL do API Gateway
 
-# Garante que estamos na pasta do compose (onde este script vive)
-Set-Location -Path $PSScriptRoot
+# --- Reset do ambiente -------------------------------------------------------
+function Reset-Stack {
+  Write-Host ""
+  Write-Host "[reset] Zerando volumes (docker compose down -v) ..." -ForegroundColor Yellow
+  docker compose down -v
 
-$nomes = @{ '1' = 'Normal'; '2' = 'Dia Corrido'; '3' = 'Emergencia' }
+  Write-Host "[reset] Subindo containers (docker compose up -d --build) ..." -ForegroundColor Yellow
+  docker compose up -d --build
 
-Write-Host ''
-Write-Host '=========================================================' -ForegroundColor Cyan
-Write-Host (" k6 -> Cenario {0} ({1})" -f $Scenario, $nomes[$Scenario]) -ForegroundColor Cyan
-Write-Host (" Sistema sob teste: {0}" -f $SystemType) -ForegroundColor Cyan
-Write-Host '=========================================================' -ForegroundColor Cyan
-Write-Host ''
-
-# Verifica se a stack principal esta de pe (precisa dos 4 MS + prometheus)
-$rodando = docker compose ps --status running --services
-if (-not ($rodando -contains 'ms-atendimentos')) {
-  Write-Host '[aviso] A stack nao parece estar rodando. Subindo com: docker compose up -d' -ForegroundColor Yellow
-  docker compose up -d
-  Write-Host '[info] Aguardando 8s para os servicos ficarem prontos...' -ForegroundColor DarkGray
-  Start-Sleep -Seconds 8
+  Wait-AppReady
 }
 
-# Dispara o k6 (profile load-test). As variaveis vao para o container.
-docker compose run --rm `
-  -e SCENARIO=$Scenario `
-  -e SYSTEM_TYPE=$SystemType `
-  k6
-
-$code = $LASTEXITCODE
-Write-Host ''
-if ($code -eq 0) {
-  Write-Host '[ok] Teste finalizado. Metricas enviadas ao Prometheus.' -ForegroundColor Green
-} else {
-  Write-Host ("[falha] k6 retornou codigo {0} (thresholds estourados ou erro de execucao)." -f $code) -ForegroundColor Red
+function Wait-AppReady {
+  Write-Host "[reset] Aguardando inicializacao do API Gateway na porta 4000..." -ForegroundColor Yellow
+  $deadline = (Get-Date).AddSeconds(120)
+  while ((Get-Date) -lt $deadline) {
+    try {
+      # Aguarda a API responder (seja 200 OK ou 404 Not Found, indica que o servidor subiu)
+      $r = Invoke-WebRequest -Uri $healthUrl -UseBasicParsing -TimeoutSec 3
+      if ($r.StatusCode -eq 200 -or $r.StatusCode -eq 404) {
+        Start-Sleep -Seconds 10   # Folga maior para os microsserviços de fundo e o BD terminarem a subida
+        Write-Host "[reset] API Gateway e Microsservicos prontos." -ForegroundColor Green
+        return
+      }
+    } catch {
+      Start-Sleep -Seconds 2
+    }
+  }
+  Write-Host "[reset] AVISO: API Gateway nao respondeu em 120s. Verifique os logs." -ForegroundColor Red
 }
-Write-Host 'Dashboards Grafana: http://localhost:3006 (admin/admin)' -ForegroundColor DarkGray
-exit $code
+
+# --- Menu Interativo ---------------------------------------------------------
+Clear-Host
+Write-Host "========================================" -ForegroundColor Cyan
+Write-Host "  PEP - K6 Load Test Runner ($arqName)" -ForegroundColor Yellow
+Write-Host "========================================" -ForegroundColor Cyan
+Write-Host ""
+Write-Host "  1) Normal         (carga base diária, Pico 50)"
+Write-Host "  2) Dia Corrido    (picos moderados, Pico 150)"
+Write-Host "  3) Emergência     (sobrecarga extrema, Pico 300)"
+Write-Host ""
+
+if ($KeepData) { Write-Host "  [modo -KeepData: os bancos NAO serao zerados]" -ForegroundColor Cyan } 
+else { Write-Host "  [a cada teste os bancos sao zerados via docker compose down -v]" -ForegroundColor Cyan }
+Write-Host ""
+
+$scenario = Read-Host "Escolha o cenário [1, 2 ou 3]"
+while ("1","2","3" -notcontains $scenario) {
+    Write-Host "Opção inválida!" -ForegroundColor Red
+    $scenario = Read-Host "Escolha o cenário [1, 2 ou 3]"
+}
+
+Write-Host ""
+$repeticao = Read-Host "Digite o NÚMERO DA REPETIÇÃO (ex: 1, 2, 3... 15)"
+while ([string]::IsNullOrWhiteSpace($repeticao)) {
+    Write-Host "A repetição é obrigatória para gerar o CSV corretamente." -ForegroundColor Red
+    $repeticao = Read-Host "Digite o NÚMERO DA REPETIÇÃO (ex: 1, 2, 3... 15)"
+}
+
+Write-Host ""
+$warmup = Read-Host "Defina o tempo de Warm-up [Aperte ENTER para o padrão de 45s]"
+if ([string]::IsNullOrWhiteSpace($warmup)) { 
+    $warmup = "45s" 
+}
+
+# Zera o ambiente antes de rodar (a menos que -KeepData)
+if (-not $KeepData) { Reset-Stack } 
+else { Write-Host "[reset] -KeepData ativo: mantendo dados existentes." -ForegroundColor Cyan }
+
+Write-Host ""
+Write-Host "Iniciando bateria de testes no $arqName..." -ForegroundColor Green
+Write-Host "Cenário: $scenario | Repetição: $repeticao | Warm-up: $warmup" -ForegroundColor DarkGray
+Write-Host "-------------------------------------------------------"
+
+# --- Execução via Docker -----------------------------------------------------
+docker run --rm -it `
+  -v "${PWD}/k6-scripts:/scripts" `
+  --network $network `
+  -e K6_PROMETHEUS_RW_SERVER_URL=http://prometheus_pep:9090/api/v1/write `
+  -e 'K6_PROMETHEUS_RW_TREND_STATS=p(95),p(99),avg,min,max' `
+  grafana/k6:latest run `
+  --out experimental-prometheus-rw `
+  -e SCENARIO=$scenario `
+  -e REPETICAO=$repeticao `
+  -e WARMUP_DURATION=$warmup `
+  $scriptFile

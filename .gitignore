@@ -60,3 +60,4 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
 #k6 results
 k6-scripts/results//*.csv
+k6-scripts/results/**/*.csv
