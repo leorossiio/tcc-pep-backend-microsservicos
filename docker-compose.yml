@@ -32,8 +32,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '0.5'
-          memory: 256M
+          cpus: '0.2'
+          memory: 192M
 
   ms-medicos:
     build:
@@ -60,8 +60,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1.0'
-          memory: 512M
+          cpus: '0.3'
+          memory: 224M
 
   ms-pacientes:
     build:
@@ -88,8 +88,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1.0'
-          memory: 512M
+          cpus: '0.3'
+          memory: 224M
 
   ms-atendimentos:
     build:
@@ -106,6 +106,10 @@ services:
       - POSTGRES_HOST=postgres-pep-ms
       - POSTGRES_PORT=5432
       - PORT_ATENDIMENTOS=3003
+      # Dual-write da triagem: o create() do ms-atendimentos chama estes dois
+      # servicos em sequencia, espelhando o que o monolito faz em processo.
+      - URL_HISTORICO_CLINICOS=http://ms-historico-clinicos:3006/historico-clinicos
+      - URL_CONSULTAS_LAUDOS=http://ms-consultas-laudos:3005/consultas-laudos
       - URL_AUDITORIA=http://ms_auditoria:3004/auditoria
     ports:
       - "3003:3003"
@@ -116,8 +120,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1.0'
-          memory: 512M
+          cpus: '0.3'
+          memory: 224M
 
   ms-auditoria:
     build:
@@ -143,8 +147,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1.0'
-          memory: 512M
+          cpus: '0.3'
+          memory: 224M
 
   ms-consultas-laudos:
     build:
@@ -166,7 +170,10 @@ services:
       - MONGO_INITDB_DATABASE=${MONGO_INITDB_DATABASE:-pep_nao_relacional}
       - URL_AUDITORIA=http://ms_auditoria:3004/auditoria
     ports:
-      - "3005:3005"
+      # Host 3015 porque a 3005 e do Grafana do monolito, e as duas stacks
+      # sobem juntas durante a campanha. A porta INTERNA continua 3005: e por
+      # ela que ms-atendimentos chama este servico na rede do compose.
+      - "3015:3005"
     depends_on:
       - mongo-pep-ms
     networks:
@@ -174,8 +181,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1.0'
-          memory: 512M
+          cpus: '0.3'
+          memory: 224M
 
   ms-historico-clinicos:
     build:
@@ -205,8 +212,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1.0'
-          memory: 512M
+          cpus: '0.3'
+          memory: 224M
 
   postgres-pep-ms:
     image: postgres:15-alpine
@@ -229,7 +236,7 @@ services:
       resources:
         limits:
           cpus: '1.0'
-          memory: 1G
+          memory: 768M
 
   mongo-pep-ms:
     image: mongo:6.0
@@ -251,7 +258,7 @@ services:
       resources:
         limits:
           cpus: '1.0'
-          memory: 1G
+          memory: 768M
 
   prometheus:
     image: prom/prometheus:latest
