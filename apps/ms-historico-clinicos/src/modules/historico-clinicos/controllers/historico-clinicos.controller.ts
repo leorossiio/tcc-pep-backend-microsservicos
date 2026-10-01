@@ -1,4 +1,14 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  HttpCode,
+  HttpStatus,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { HistoricoClinicosService } from '../services/historico-clinicos.service';
 import { CreateHistoricoClinicoDto } from '../dto/create-historico-clinico.dto';
@@ -14,6 +24,16 @@ export class HistoricoClinicosController {
   @ApiResponse({ status: 201, description: 'Histórico criado com sucesso.' })
   create(@Body() createHistoricoClinicoDto: CreateHistoricoClinicoDto) {
     return this.historicoClinicosService.create(createHistoricoClinicoDto);
+  }
+
+  @Post('criar-ou-obter')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Criar o histórico do paciente ou devolver o existente (idempotente)',
+  })
+  @ApiResponse({ status: 200, description: 'Histórico criado ou recuperado.' })
+  criarOuObter(@Body() createHistoricoClinicoDto: CreateHistoricoClinicoDto) {
+    return this.historicoClinicosService.criarOuObter(createHistoricoClinicoDto);
   }
 
   @Get()

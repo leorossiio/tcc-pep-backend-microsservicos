@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
 import { HistoricoClinicosRepository } from '../repositories/historico-clinicos.repository';
 import { CreateHistoricoClinicoDto } from '../dto/create-historico-clinico.dto';
 import { UpdateHistoricoClinicoDto } from '../dto/update-historico-clinico.dto';
@@ -18,6 +22,30 @@ export class HistoricoClinicosService {
     }
 
     return this.historicoClinicosRepository.create(createHistoricoClinicoDto);
+  }
+
+  /**
+   * Passo 2 do dual-write da triagem: garante o historico do paciente.
+   *
+   * Existe para espelhar o criarOuObter do monolito, onde esta chamada e um
+   * metodo em processo. Aqui ela custa um salto HTTP vindo do ms-atendimentos —
+   * e esse custo e justamente parte do que o experimento mede.
+   */
+  async criarOuObter(createHistoricoClinicoDto: CreateHistoricoClinicoDto) {
+    try {
+      if (!createHistoricoClinicoDto.hash_integridade) {
+        createHistoricoClinicoDto.hash_integridade = hashDocument({
+          ...createHistoricoClinicoDto,
+        });
+      }
+      return await this.historicoClinicosRepository.upsertByPacienteId(
+        createHistoricoClinicoDto,
+      );
+    } catch {
+      throw new InternalServerErrorException(
+        'Falha ao criar historico clinico no MongoDB',
+      );
+    }
   }
 
   async findAll() {

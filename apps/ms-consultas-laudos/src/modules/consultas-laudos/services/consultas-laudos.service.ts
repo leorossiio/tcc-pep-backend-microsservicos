@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { HttpService } from '@nestjs/axios';
 import { ConsultasLaudosRepository } from '../repositories/consultas-laudos.repository';
 import { CreateConsultaLaudoDto } from '../dto/create-consulta-laudo.dto';
 import { UpdateConsultaLaudoDto } from '../dto/update-consulta-laudo.dto';
@@ -6,9 +7,40 @@ import { hashDocument } from '../../../../../../libs/common/src/utils/crypto.uti
 
 @Injectable()
 export class ConsultasLaudosService {
+  private readonly urlAuditoria =
+    process.env.URL_AUDITORIA || 'http://ms-auditoria:3004/auditoria';
+
   constructor(
     private readonly consultasLaudosRepository: ConsultasLaudosRepository,
+    private readonly httpService: HttpService,
   ) {}
+
+  /**
+   * Auditoria do registro clinico — fire-and-forget, como no monolito.
+   *
+   * Existe por paridade experimental: o create() do monolito grava um log de
+   * auditoria do ConsultaLaudo, e sem este disparo o MS faria uma escrita a
+   * menos por triagem. Aqui o custo e um salto HTTP a mais, que e justamente a
+   * diferenca arquitetural que o trabalho mede.
+   */
+  private dispararAuditoria(dto: CreateConsultaLaudoDto, documentoId: string) {
+    this.httpService
+      .post(this.urlAuditoria, {
+        atendimentoId: dto.atendimento_id,
+        acaoRealizada: `${dto.tipo_registro} registrado pelo médico ${dto.medico_id}`,
+        ipOrigem: null,
+        entidadeAfetada: 'ConsultaLaudo',
+        entidadeId: documentoId,
+        usuarioResponsavel: dto.medico_id,
+      })
+      .subscribe({
+        error: (err) =>
+          console.warn(
+            '[ms-consultas-laudos] Falha ao comunicar com Auditoria:',
+            err.message,
+          ),
+      });
+  }
 
   async create(createConsultaLaudoDto: CreateConsultaLaudoDto) {
     if (!createConsultaLaudoDto.hash_integridade) {
@@ -19,7 +51,11 @@ export class ConsultasLaudosService {
       createConsultaLaudoDto.hash_integridade = hashDocument(dadosParaAssinar);
     }
 
-    return this.consultasLaudosRepository.create(createConsultaLaudoDto);
+    const documento = await this.consultasLaudosRepository.create(
+      createConsultaLaudoDto,
+    );
+    this.dispararAuditoria(createConsultaLaudoDto, String(documento._id));
+    return documento;
   }
 
   async findAll() {

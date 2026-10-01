@@ -29,6 +29,30 @@ export class HistoricoClinicosRepository {
     return this.historicoClinicoModel.findOne({ paciente_id: pacienteId }).exec();
   }
 
+  /**
+   * Cria o historico do paciente ou devolve o que ja existe, numa unica ida ao
+   * MongoDB. Espelha o upsertByPacienteId do monolito.
+   *
+   * Idempotente de proposito: a triagem e chamada varias vezes para o mesmo
+   * paciente ao longo da campanha de carga, e cada chamada nao pode gerar um
+   * historico novo — a relacao paciente <-> historico e 1:1.
+   *
+   * $setOnInsert e nao $set: num paciente que ja tem historico, sobrescrever os
+   * campos apagaria alergias e comorbidades acumuladas em atendimentos
+   * anteriores.
+   */
+  async upsertByPacienteId(
+    dto: CreateHistoricoClinicoDto,
+  ): Promise<HistoricoClinicoDocument> {
+    return this.historicoClinicoModel
+      .findOneAndUpdate(
+        { paciente_id: dto.paciente_id },
+        { $setOnInsert: dto },
+        { new: true, upsert: true, setDefaultsOnInsert: true },
+      )
+      .exec() as Promise<HistoricoClinicoDocument>;
+  }
+
   async update(id: string, updateHistoricoClinicoDto: UpdateHistoricoClinicoDto): Promise<HistoricoClinicoDocument | null> {
     return this.historicoClinicoModel
       .findByIdAndUpdate(id, updateHistoricoClinicoDto, { new: true })
